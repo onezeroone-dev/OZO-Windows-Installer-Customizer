@@ -1,4 +1,4 @@
-#Requires -Modules Dism,OZOLogger -RunAsAdministrator
+#Requires -Modules Dism,ImportExcel,OZOLogger -Version 5.1 -RunAsAdministrator
 
 <#PSScriptInfo
     .VERSION 0.0.1
@@ -10,7 +10,7 @@
     .LICENSEURI https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer/blob/main/LICENSE
     .PROJECTURI https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer
     .ICONURI
-    .EXTERNALMODULEDEPENDENCIES
+    .EXTERNALMODULEDEPENDENCIES Dism,ImportExcel,OZOLogger
     .REQUIREDSCRIPTS
     .EXTERNALSCRIPTDEPENDENCIES
     .RELEASENOTES https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer/blob/main/CHANGELOG.md
@@ -21,38 +21,44 @@
     .SYNOPSIS
     See description.
     .DESCRIPTION
-    Customizes the Windows installer ISO based on a JSON configuration file containing parameters for OS, version, edition, and features. It enabled automation with an Answer File and assist the operator in adding custom media (wallpapers, logos, etc.) and removing undesired AppX packages.
+    Customizes the Windows installer ISO based on a JSON configuration file containing parameters for OS, version, edition, and features. It enables automation with an Answer File, can include custom media (wallpapers, logos, etc.), and can remove undesired AppX packages
     .PARAMETER Configuration
     The path to the JSON configuration file. Defaults to ozo-windows-installer-customizer.json in the same directory as this script.
     .PARAMETER Nocleanup
     Do not clean up the temporary file assets. Mostly used for testing and debugging.
+    .PARAMETER OutDir
+    Output directory for the Excel report. Defaults to the current directory.
     .EXAMPLE
     ozo-windows-installer-customizer -Configuration "C:\Scripts\ozo-windows-installer-customizer.json"
     .LINK
     https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer/blob/main/README.md
     .NOTES
-    Requires Administrator privileges.
+    Run this script as Administrator.
 #>
 
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
-    [Parameter(Mandatory=$false,HelpMessage="The path to the JSON configuration file")][String]$Configuration = (Join-Path -Path $PSScriptRoot -ChildPath "ozo-windows-installer-customizer.json")
+    [Parameter(Mandatory=$false,HelpMessage="The path to the JSON configuration file")][String]$Configuration = (Join-Path -Path $PSScriptRoot -ChildPath "ozo-windows-installer-customizer.json"),
+    [Parameter(HelpMessage="Do not clean up the temporary file assets")][Switch]$NoCleanup,
+    [Parameter(Mandatory=$false,HelpMessage="Output directory for the Excel report")][String]$OutDir = (Get-Location)
 )
 
 # Classes
-
 Class OWICConfiguration {
     # PROPERTIES: Boolean, String, Long, PSCustomObject
-    [Boolean]        $noCleanup = $false
-    [Boolean]        $Validates = $true
-    [Long]           $tempFree  = $null
-    [String]         $jsonPath  = $null
-    [PSCustomObject] $Json      = $null
+    [Boolean] $noCleanup = $false
+    [Boolean] $Validates = $true
+    [Long]    $tempFree  = $null
+    [String]  $jsonPath  = $null
+    [String]  $outDir    = $null
+    # PROPERTIES: PSCustomObject
+    [PSCustomObject] $Json = $null
     # Constructor method
-    OWICConfiguration($Configuration,$NoCleanup) {
+    OWICConfiguration($Configuration,$NoCleanup,$OutDir) {
         # Set Properties
         $this.jsonPath  = $Configuration
         $this.noCleanup = $NoCleanup
+        $this.outDir    = $OutDir
         # Call ValidateEnvironment to set Validates
         $this.Validates = ($this.ValidateJSON() -And $this.ValidateEnvironment())
     }
@@ -110,6 +116,12 @@ Class OWICConfiguration {
             $Global:owicLogger.Write("Did not find oscdimg.exe.","Error")
             $Return = $false
         }
+        # Determine that OutDir exists
+        If ((Test-Path -Path $this.outDir) -eq $false) {
+            # OutDir does not exist
+            $Global:owicLogger.Write("Output directory does not exist or is not accessible.","Error")
+            $Return = $false
+        }
         # Return
         return $Return
     }
@@ -139,6 +151,7 @@ Class OWICMain {
         $Global:owicLogger.Write("That's all, folks","Information")
     }
 }
+
 Class OWICJob {
     # PROPERTES: Boolean, Long, String, PSCUstomObject
     [Boolean] $Validates     = $true
@@ -656,7 +669,7 @@ Class OWICModel {
 # Create a logging object
 $Global:owicLogger = New-OZOLogger
 # Create an object of the OWICConfiguration class
-$Global:owicConfiguration = [OWICConfiguration]::new($Configuration,$NoCleanup)
+$Global:owicConfiguration = [OWICConfiguration]::new($Configuration,$NoCleanup,$OutDir)
 # Determine if the configuration validates
 If ($Global:owicConfiguration.Validates -eq $true) {
     $Global:owicLogger.Write("Configuration validates.","Information")
@@ -665,3 +678,9 @@ If ($Global:owicConfiguration.Validates -eq $true) {
 } Else {
     $Global:owicLogger.Write("Configuration did not validate.","Error")
 }
+
+<#
+TODO:
+- Write Report() method
+- Refine how the Answer file and custom media work
+#>
