@@ -1,0 +1,55 @@
+{
+    "Paths":{
+        "TempDir":"C:\\Imaging\\Temp",
+        "OscdimgPath":"C:\\Program Files (x86)\\Windows Kits\\10\\Assessment and Deployment Kit\\Deployment Tools\\amd64\\Oscdimg\\oscdimg.exe"
+    },
+    "Models":[
+        {
+            "Name":"VMware-17-VM",
+            "DriversDirectory":"C:\\Imaging\\Drivers\\VMware-17-VM"
+        },
+        {
+            "Name":"Dell-XPS-7390",
+            "DriversDirectory":"C:\\Imaging\\Drivers\\Dell-XPS-7390"
+        }
+    ],
+    "Jobs":[
+        {
+            "Enabled":true,
+            "Name":"Windows 11 Professional 22H2 for VMware + Dell XPS 7390",
+            "OSName":"Windows",
+            "Version":"11",
+            "Edition":"Pro",
+            "Feature":"22H2",
+            "Build":"000",
+            "Files":{
+                "answerPath":"C:\\Imaging\\Answer Files\\22H2\\Windows-11-Pro-22H2-Autounattend.xml",
+                "sourceISOPath":"C:\\Imaging\\ISO\\Win11_22H2_English_x64v1.iso",
+                "logoPath":"C:\\Imaging\\Media\\OZO-logo.jpg",
+                "iconPath":"C:\\Imaging\\Media\\OZO-icon.png",
+                "wallpaperPath":"C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png"
+            },
+            "Models":[
+                "VMware-17-VM",
+                "Dell-XPS-7390"
+            ],
+            "removeAppxProvisionedPackages":[
+                "Microsoft.BingNews",
+                "Microsoft.BingWeather",
+                "Microsoft.Weather",
+                "Microsoft.GetHelp",
+                "Microsoft.Getstarted",
+                "Microsoft.MicrosoftOfficeHub",
+                "Microsoft.MicrosoftSolitaireCollection",
+                "Microsoft.MicrosoftStickyNotes",
+                "Microsoft.People",
+                "Microsoft.windowscommunicationsapps",
+                "Microsoft.WindowsFeedbackHub",
+                "Microsoft.WindowsMaps",
+                "Microsoft.Xbox.TCUI",
+                "Microsoft.ZuneMusic",
+                "Microsoft.ZuneVideo"
+            ]
+        }
+    ]
+}
