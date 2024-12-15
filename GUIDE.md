@@ -2,7 +2,7 @@
 ## Overview
 Customizes the Windows installer ISO based on a JSON configuration file containing parameters for OS, version, edition, and features. It enables automation with an Answer File, can include custom media (wallpapers, logos, etc.), and can remove undesired AppX packages.
 
-_Note: For guidance on installing this script, please see [**README.md**](readme.md)._
+_Note: For guidance on installing this script, please see [**README.md**](README.md)._
 
 This script reads a JSON configuration file containing one or more _Jobs_. Each job is a combination of OS, version, edition, and feature (e.g., Windows 11 Professional 22H2) and a user-defined _build_ number that differentiates builds of the same os-version-edition-feature, e.g.,
 

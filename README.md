@@ -7,7 +7,7 @@ _Note: For guidance on configuration and more detail on using this script, pleas
 ## Prerequisites
 * PowerShell version 5.1 or newer.
 * The latest [Microsoft Assessment and Deployment Kit](https://docs.microsoft.com/en-us/windows-hardware/get-started/adk-install) ("ADK"). Select the _Deployment Tools_ option during installation. This provides the DISM PowerShell module and `oscdimg.exe`.
-* The `DISM`, `ImportExcel`, and `OZOLogger` modules. The `DISM` module is provided by the ADK. The `ImportExcel` and `OZOLogger` moduls are published to [PowerShell Gallery](https://learn.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-5.1), You can also install and run the [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) script to support the optimal user of the `OZOLogger` module. Ensure your system is configured for this repository then execute the following in an _Administrator_ PowerShell:
+* The `DISM`, `ImportExcel`, and `OZOLogger` modules. The `DISM` module is provided by the ADK. The `ImportExcel` and `OZOLogger` modules are published to [PowerShell Gallery](https://learn.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-5.1), You can also install and run the [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) script to support the optimal user of the `OZOLogger` module. Ensure your system is configured for this repository then execute the following in an _Administrator_ PowerShell:
 
     ```powershell
     Install-Script ozo-windows-event-log-provider-setup
