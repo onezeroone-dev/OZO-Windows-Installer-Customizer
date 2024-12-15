@@ -176,11 +176,11 @@ Jobs.Files is a dictionary containing paths to the answer file, source ISO, and 
 
 |Item|Required|Example value|Description|
 |----|--------|-------------|-----------|
-|`answerPath`|Yes|`C:\\Imaging\\Answer Files\\22H2\\Windows-11-Pro-22H2-Autounattend.xml`|The path to the answer file. This may be an absolute path. If this is a relative path, the tool will look for this file under `answerDir`.|
-|`sourceIsoPath`|Yes|`C:\\Imaging\\ISO\\Win11_22H2_English_x64v1.iso`|The source ISO file. This may be an absolute path. If this is a relative path, the tool will look for this file under `isoDir`.|
-|`logoFile`|No|`C:\\Imaging\\Media\\OZO-logo.jpg`|The logo file. This may be an absolute path. If this is a relative path, the tool will look for this file under `mediaDir`. This file will copied into the ISO as `%windir%\system32\OEM\logo.png` so please ensure the answer file contains this value.|
-|`iconFile`|No|`C:\\Imaging\\Media\\OZO-icon.png`|The icon file. This may be an absolute path. If this is a relative path, the tool will look for this file under `mediaDir`. This file will be copied into the ISO as `%windir%\system32\OEM\icon.png` so please ensure the answer file contains this value.|
-|`wallpaperFile`|No|`C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png`|The wallpaper file. This may be an absolute path. If this is a relative path, the tool will look for this file under `mediaDir`. This file will be copied into the ISO as `%windir%\system32\OEM\wallpaper.png` so please ensure the answer file contains this value.|
+|`answerPath`|Yes|`C:\\Imaging\\Answer Files\\22H2\\Windows-11-Pro-22H2-Autounattend.xml`|The path to the answer file.|
+|`sourceIsoPath`|Yes|`C:\\Imaging\\ISO\\Win11_22H2_English_x64v1.iso`|The source ISO file.|
+|`logoFile`|No|`C:\\Imaging\\Media\\OZO-logo.jpg`|The logo file. This file will copied into the ISO as `%windir%\system32\OEM\logo.png` so please ensure the answer file contains this value.|
+|`iconFile`|No|`C:\\Imaging\\Media\\OZO-icon.png`|The icon file. This file will be copied into the ISO as `%windir%\system32\OEM\icon.png` so please ensure the answer file contains this value.|
+|`wallpaperFile`|No|`C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png`|The wallpaper file. This file will be copied into the ISO as `%windir%\system32\OEM\wallpaper.png` so please ensure the answer file contains this value.|
 
 ## Run the Automated Build
 
@@ -189,4 +189,3 @@ For an idea of the steps performed by this script, please see [Customizing the W
 ```powershell
 ozo-windows-installer-customizer -Configuration "C:\Imaging\Configuration\ozo-windows-installer-customizer.json"
 ```
-
