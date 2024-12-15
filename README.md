@@ -1,14 +1,13 @@
 # OZO Windows Installer Customizer Installation and Usage
+## Overview
+Customizes the Windows installer ISO based on a JSON configuration file containing parameters for OS, version, edition, and features. It enables automation with an Answer File, can include custom media (wallpapers, logos, etc.), and can remove undesired AppX packages.
 
 _Note: For guidance on configuration and more detail on using this script, please see [**GUIDE.md**](GUIDE.md)._
 
-## Overview
-
-Customizes the Windows installer ISO based on a JSON configuration file containing parameters for OS, version, edition, and features. It enables automation with an Answer File, can include custom media (wallpapers, logos, etc.), and can remove undesired AppX packages.
-
 ## Prerequisites
 * PowerShell version 5.1 or newer.
-* The `DISM`, `ImportExcel`, and `OZOLogger` modules. The `DISM` module is included with Windows. The `ImportExcel` and `OZOLogger` moduls are published to [PowerShell Gallery](https://learn.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-5.1), You can also install and run the [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) script to support the optimal user of the `OZOLogger` module. Ensure your system is configured for this repository then execute the following in an _Administrator_ PowerShell:
+* The latest [Microsoft Assessment and Deployment Kit](https://docs.microsoft.com/en-us/windows-hardware/get-started/adk-install) ("ADK"). Select the _Deployment Tools_ option during installation. This provides the DISM PowerShell module and `oscdimg.exe`.
+* The `DISM`, `ImportExcel`, and `OZOLogger` modules. The `DISM` module is provided by the ADK. The `ImportExcel` and `OZOLogger` moduls are published to [PowerShell Gallery](https://learn.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-5.1), You can also install and run the [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) script to support the optimal user of the `OZOLogger` module. Ensure your system is configured for this repository then execute the following in an _Administrator_ PowerShell:
 
     ```powershell
     Install-Script ozo-windows-event-log-provider-setup
@@ -37,9 +36,9 @@ ozo-windows-installer-customizer <Parameters>
 |`OutDir`|Output directory for the Excel report. Defaults to the current directory.|
 
 ## Logging and Reporting
-This script writes general status messages to the Windows Event Log. If [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) as been implemented, messages are written to the _One Zero One_ provider. Otherwise, messages are written to the _Microsoft-Windows-PowerShell_ provider.
+This script writes general status messages to the Windows Event Log. If [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) has been implemented, messages are written to the _One Zero One_ provider. Otherwise, messages are written to the _Microsoft-Windows-PowerShell_ provider.
 
-Each run of the script produces a Excel file containing details about each customization jobs.
+Every run of the script produces a Excel file containing details about each customization job.
 
 ## Notes
 Run this script as _Administrator_. For guidance on configuration and using this script, please see [**GUIDE.md**](GUIDE.md).
