@@ -43,7 +43,6 @@ param(
 # Classes
 Class OWICMain {
     # PROPERTIES: Booleans, Strings, Longs
-    [Boolean] $noCleanup = $false
     [Boolean] $Validates = $true
     [Long]    $tempFree  = $null
     [String]  $jsonPath  = $null
@@ -51,39 +50,61 @@ Class OWICMain {
     [PSCustomObject] $Json      = $null
     [PSCustomObject] $ozoLogger = (New-OZOLogger)
     # PROPERTIES: Lists
+    [System.Collections.Generic.List[String]] $Editions = @(
+        "Home",
+        "Home N",
+        "Home Single Language",
+        "Education",
+        "Education N",
+        "Pro",
+        "Pro N",
+        "Pro Education",
+        "Pro Education N",
+        "Pro for Workstations",
+        "Pro N for Workstations",
+        "Enterprise",
+        "Enterprise N",
+        "Enterprise Evaluation",
+        "Enterprise N Evaluation"
+        "Standard Evaluation",
+        "Standard Evaluation (Desktop Experience)",
+        "Datacenter Evaluation",
+        "Datacenter Evaluation (Desktop Experience)"
+    )
     [System.Collections.Generic.List[PSCustomObject]] $Jobs = @()
     # METHODS
     # Constructor method
     OWICMain($Configuration,$NoCleanup) {
         # Set Properties
         $this.jsonPath  = $Configuration
-        $this.noCleanup = $NoCleanup
+        # Declare ourselves to the world
+        $this.ozoLogger.Write("Starting process.","Information")
         # Call ValidateEnvironment to set Validates
         If (($this.ValidateConfiguration() -And $this.ValidateEnvironment()) -eq $true) {
             # Iterate through the enabled jobs in the JSON configuration
             ForEach($jobJson in ($this.Json.Jobs | Where-Object {$_.enabled -eq $true})) {
                 # Process the job object
                 # Add OscdimgPath, tempDir, and tempFree to the job object
-                Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "OscdimgPath" -Value $this.OscdimgPath
-                Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "tempDir" -Value $this.tempDir
+                Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "OscdimgPath" -Value $this.Json.Paths.OscdimgPath
+                Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "tempDir" -Value $this.Json.Paths.tempDir
+                Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "noCleanup" -Value $NoCleanup
                 Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "tempFree" -Value $this.tempFree
                 # Add this job to the jobs list
-                #$this.Jobs.Add([OWICJob]::new($jobJson))
-                $jobJson
+                $this.Jobs.Add([OWICJob]::new($jobJson))
             }
             # Iterate through the valid jobs
-            <#
-            ForEach ($Job in ($this.Jobs | Where-Object {$_.Validated -eq $true})) {
+            ForEach ($Job in ($this.Jobs | Where-Object {$_.Validates -eq $true})) {
                 # Call the CustomizeISO method
                 $Job.CustomizeISO()
             }
-            #>
         } Else {
             # Configuration and environment do not validate
             $this.Validates = $false
         }
         # Call the report method
         $this.Report()
+        # Finish
+        $this.ozoLogger.Write("Process complete.","Information")
     }
     # JSON validation method
     Hidden [Boolean] ValidateConfiguration() {
@@ -110,7 +131,10 @@ Class OWICMain {
     }
     # Paths validation method
     Hidden [Boolean] ValidateEnvironment() {
+        # Control variable
         [Boolean] $Return = $true
+        # Local variables
+        [String] $tempDrive = $null
         # Scrutinize TempDir; determine if the path contains spaces
         If ($this.Json.Paths.TempDir -Match " ") {
             # Found spaces
@@ -118,9 +142,10 @@ Class OWICMain {
             $Return = $false
         }
         # Determine if TempDir exists
-        If ((Test-Path -path $this.Json.TempDir) -eq $true) {
-            # Path exists; get statistics
-            [String] $tempDrive = (Get-Item $this.Json.Paths.TempDir).PSDrive.Name
+        Try {
+            Test-Path -Path $this.Json.Paths.TempDir -ErrorAction Stop
+            # Success; get statistics
+            $tempDrive = (Get-Item $this.Json.Paths.TempDir).PSDrive.Name
             $this.tempFree = (Get-Volume -DriveLetter $tempDrive).SizeRemaining
             # Determine if TempDir drive is fixed
             If ((Get-Volume -DriveLetter $tempDrive).DriveType -ne "Fixed") {
@@ -128,21 +153,18 @@ Class OWICMain {
                 $this.ozoLogger.Write("Temporary directory is not on a fixed drive.","Error")
                 $Return = $false
             }
-        } Else {
+        } Catch {
             # Path does not exist
             $this.ozoLogger.Write("Temporary directory does not exist.","Error")
             $Return = $false
         }
         # Determine if oscdimg.exe is missing
-        If ((Test-Path -Path $this.Json.Paths.OscdimgPath) -eq $false) {
-            # Not found
+        Try {
+            Test-Path -Path $this.Json.Paths.OscdimgPath -ErrorAction Stop
+            # Success
+        } Catch {
+            # Failure
             $this.ozoLogger.Write("Did not find oscdimg.exe.","Error")
-            $Return = $false
-        }
-        # Determine that OutDir exists
-        If ((Test-Path -Path $this.outDir) -eq $false) {
-            # OutDir does not exist
-            $this.ozoLogger.Write("Output directory does not exist or is not accessible.","Error")
             $Return = $false
         }
         # Return
@@ -155,25 +177,27 @@ Class OWICMain {
             # At least one job was processed; determine if there were any successes
             If (($this.Jobs | Where-Object {$_.Success -eq $true}).Count -gt 0) {
                 # At least one job was successful; report names
-                $this.ozoLogger.Write(("Successfully processed the following jobs:`r`n" + (($this.Jobs | Where-Object {$_.Success -eq $true}).Name -Join(`r`n))),"Information")
+                $this.ozoLogger.Write(("Successfully processed the following jobs:`r`n" + (($this.Jobs | Where-Object {$_.Success -eq $true}).Json.Name -Join("`r`n"))),"Information")
                 # Iterate on the success jobs
                 ForEach ($successJob in ($this.Jobs | Where-Object {$_.Success -eq $true})) {
                     $this.ozoLogger.writeOutput = $false
-                    $this.ozoLogger.Write(("The " + $successJob.Json.Name + " job succeeded with the following messages:`r`n`r`n" + ($successJob.Messages -Join(`r`n))),"Information")
+                    $this.ozoLogger.Write(("The " + $successJob.Json.Name + " job succeeded with the following messages:`r`n" + ($successJob.Messages -Join("`r`n"))),"Information")
                     $this.ozoLogger.writeOutput = $true
                 }
             }
             # Determine if there were any failures
             If (($this.Jobs | Where-Object {$_.Success -eq $false}).Count -gt 0) {
                 # At least one job failed; report names
-                $this.ozoLogger.Write(("The following jobs failed:`r`n" + (($this.Jobs | Where-Object {$_.Success -eq $false}).Name -Join(`r`n))),"Warning")
+                $this.ozoLogger.Write(("The following jobs failed:`r`n" + (($this.Jobs | Where-Object {$_.Success -eq $false}).Json.Name -Join("`r`n"))),"Warning")
                 # Iterate
                 ForEach ($failureJob in ($this.Jobs | Where-Object {$_.Success -eq $false})) {
                     $this.ozoLogger.writeOutput = $false
-                    $this.ozoLogger.Write(("The " + $failureJob.Json.Name + " job failed with the following messages:`r`n`r`n" + ($failureJob.Messages -Join(`r`n))),"Information")
+                    $this.ozoLogger.Write(("The " + $failureJob.Json.Name + " job failed with the following messages:`r`n" + ($failureJob.Messages -Join("`r`n"))),"Warning")
                     $this.ozoLogger.writeOutput = $true
                 }
             }
+            # Report re: additional messages.
+            $this.ozoLogger.Write("Please see the One Zero One Windows Event Provider Log for additional detail. If you have not installed the One Zero One Windows Event Provider, messages can be found in the Microsoft Windows PowerShell Event Log Provider under event ID 4100.","Information")
         } Else {
             # No jobs were processed
             $this.ozoLogger.Write("Processed zero jobs.","Warning")
@@ -196,7 +220,7 @@ Class OWICJob {
     [String]  $wallpaperPath = $null
     [String]  $wimDir        = $null
     # PROPERTIES: PSCUstomObject
-    [PSCustomObject] $Json    = $null
+    [PSCustomObject] $Json   = $null
     # PROPERTIES: List
     [System.Collections.Generic.List[String]] $Messages = @()
     # METHODS
@@ -303,7 +327,7 @@ Class OWICJob {
             # Determine that file exists
             If ((Test-Path -Path $this.Json.Files.sourceISOPath) -eq $true) {
                 # File exists; parse to set targetISOPath
-                $this.targetISOPath = (Join-Path -Path (Split-Path -Path $this.Json.Files.sourceISOPath -Parent) -ChildPath ("OZO-" + $this.Json.OSsName + "-" + $this.Json.Version + "-" + $this.Json.Edition + "-" + $this.Json.Feature + "-" + $this.Json.Build + ".iso"))
+                $this.targetISOPath = (Join-Path -Path (Split-Path -Path $this.Json.Files.sourceISOPath -Parent) -ChildPath ("OZO-" + $this.Json.OSName + "-" + $this.Json.Version + "-" + $this.Json.Edition + "-" + $this.Json.Feature + "-" + $this.Json.Build + ".iso"))
                 # Determine if target ISO already exists
                 If ((Test-Path -Path $this.targetISOPath) -eq $true) {
                     # Target ISO exists; error
@@ -311,7 +335,7 @@ Class OWICJob {
                     $Return = $false
                 }
                 # File exists; determine if the disk has enough space for this job
-                If ($this.Json.tempFree -lt ((Get-Item -Path $this.Json.Files.inputIsoPath).Length * 4)) {
+                If ($this.Json.tempFree -lt ((Get-Item -Path $this.Json.Files.sourceISOPath).Length * 4)) {
                     # Disk does not have enough space
                     $this.Messages.Add("Drive does not have enough free space; requires size of ISO x 4.")
                     $Return = $false
@@ -350,7 +374,7 @@ Class OWICJob {
             }
         }
         # Determine if any drivers directories are set
-        If ($this.Drivers.Count -gt 0) {
+        If ($this.Json.Drivers.Count -gt 0) {
             # At least one drivers directory is set; iterate
             ForEach ($Driver in $this.Json.Drivers) {
                 # Determine if the path is not found
@@ -374,8 +398,6 @@ Class OWICJob {
     }
     # Customize ISO method
     [Void] CustomizeISO() {
-        # Declare ourselves to the world
-        $this.Messages.Add("Starting ISO customization")
         # Call all methods in order to set Success
         $this.Success = (
             $this.CreateJobTempDirs() -And
@@ -430,9 +452,9 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         Try {
-            Mount-DiskImage -ImagePath $this.Json.sourceISOPath -ErrorAction Stop
+            Mount-DiskImage -ImagePath $this.Json.Files.sourceISOPath -ErrorAction Stop
             # Success; get the drive letter
-            $this.mountDrive = (Get-DiskImage $this.Json.sourceISOPath -ErrorAction Stop | Get-Volume -ErrorAction Stop).DriveLetter
+            $this.mountDrive = (Get-DiskImage $this.Json.Files.sourceISOPath -ErrorAction Stop | Get-Volume -ErrorAction Stop).DriveLetter
         } Catch {
             # Failure
             $this.Messages.Add("Failed to mount source ISO")
@@ -450,7 +472,7 @@ Class OWICJob {
             #Success
         } Catch {
             # Failure
-            $this.Messages.Add("Failed to copy ISO contents to the dvdDir directory")
+            $this.Messages.Add("Failed to copy ISO contents to the DVD directory")
             $Return = $false
         }
         # Return
@@ -461,7 +483,7 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         Try {
-            Move-Item -Path ($this.dvdDir + "\sources\install.wim") -Destination ($this.wimDir + "\") -ErrorAction Stop
+            Move-Item -Path (Join-Path -Path $this.dvdDir -ChildPath "sources\install.wim") -Destination ($this.wimDir + "\") -ErrorAction Stop
             #Success
         } Catch {
             # Failure
@@ -474,14 +496,14 @@ Class OWICJob {
     # Export index method
     Hidden [Boolean] ExportIndex() {
         # Control variable
-        [Boolean] $Return = $true
-        [String]  $Index  = ($this.Json.OSName + " " + $this.Json.Version + " " + $this.Json.Edition)
+        [Boolean] $Return    = $true
+        [String]  $IndexName = ($this.Json.OSName + " " + $this.Json.Version + " " + $this.Json.Edition)
         Try {
-            Export-WindowsImage -SourceName $Index -SourceImagePath ($this.wimDir + "\install.wim") -DestinationImagePath ($this.dvdDir + "\sources\install.wim") -ErrorAction Stop
+            Export-WindowsImage -SourceName $IndexName -SourceImagePath (Join-Path -Path $this.wimDir -ChildPath "install.wim") -DestinationImagePath (Join-Path -Path $this.dvdDir -ChildPath "sources\install.wim") -ErrorAction Stop
             #Success
         } Catch {
             # Failure
-            $this.Messages.Add(("Failed to export the " + $Index + " index"))
+            $this.Messages.Add(("Failed to export the " + $IndexName + " index"))
             $Return = $false
         }
         # Return
@@ -492,7 +514,7 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         Try {
-            Mount-WindowsImage -Path $this.mountDir -ImagePath ($this.dvdDir + "\sources\install.wim") -Index 1 -ErrorAction Stop
+            Mount-WindowsImage -Path $this.mountDir -ImagePath (Join-Path -Path $this.dvdDir -ChildPath "sources\install.wim") -Index 1 -ErrorAction Stop
             #Success
         } Catch {
             # Failure
@@ -507,7 +529,7 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         # Determine if any of the three media assets were defined in the XML
-        If ([String]::IsNullOrEmpty($this.logoPath) -eq $false -Or [String]::IsNullOrEmpty($this.iconPath) -eq $false -Or [String]::IsNullOrEmpty($this.wallpaperPath) -eq $false) {
+        If (([String]::IsNullOrEmpty($this.logoPath) -eq $false) -Or ([String]::IsNullOrEmpty($this.iconPath) -eq $false) -Or ([String]::IsNullOrEmpty($this.wallpaperPath) -eq $false)) {
             # At least one of logoPath, iconPath, or wallpaperPath were found in the XML; try to create the OEM directory
             Try {
                 New-Item -ItemType Directory -Path (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM") -ErrorAction Stop
@@ -575,6 +597,9 @@ Class OWICJob {
                 $this.Messages.Add("Unable to create OEM directory for media assets.")
                 $Return = $false
             }
+        } Else {
+            # No media assets were set
+            $this.Messages.Add("No media assets were specified.")
         }
         # Return
         return $Return
@@ -616,10 +641,7 @@ Class OWICJob {
                         # Failure
                         $this.Messages.Add(("Unable to remove the " + $AppxPackage.DisplayName + " package from the image."))
                     }
-                } Else {
-                    # Package does not appear in the image
-                    $this.Messages.Add(("Package " + $AppxPackage.DisplayName + " not found in the image."))
-                }            
+                }
             }
         } Else {
             $this.Messages.Add("No AppxPackages to remove.")
@@ -648,7 +670,7 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         Try {
-            Copy-Item -Path $this.answerPath -Destination (Join-Path -Path $this.dvdDir -ChildPath "Autounattend.xml") -ErrorAction Stop
+            Copy-Item -Path $this.Json.Files.answerPath -Destination (Join-Path -Path $this.dvdDir -ChildPath "Autounattend.xml") -ErrorAction Stop
             #Success
         } Catch {
             # Failure
@@ -687,10 +709,10 @@ Class OWICJob {
             }
         }
         # Determine if the ISO is still mounted
-        If ($null -ne (Get-DiskImage $this.Json.sourceISOPath | Get-Volume).DriveLetter) {
+        If ($null -ne (Get-DiskImage $this.Json.Files.sourceISOPath | Get-Volume).DriveLetter) {
             # ISO is still mounted; try to dismount
             Try {
-                Dismount-DiskImage -ImagePath $this.Json.sourceISOPath -ErrorAction Stop
+                Dismount-DiskImage -ImagePath $this.Json.Files.sourceISOPath -ErrorAction Stop
                 # Success
             } Catch {
                 # Failure
@@ -698,7 +720,7 @@ Class OWICJob {
             }
         }
         # Determine if operator did not request NoCleanup
-        If ($Global:owicConfiguration.noCleanup -eq $false) {
+        If ($this.Json.noCleanup -eq $false) {
             # Operator did not request NoCleanup; try to remove the jobTempDir
             Try {
                 Remove-Item -Recurse -Force -Path $this.jobTempDir -ErrorAction Stop
@@ -711,8 +733,3 @@ Class OWICJob {
 
 # MAIN
 [OWICMain]::new($Configuration,$NoCleanup) | Out-Null
-
-<#
-TODO:
-- Write Report() method
-#>

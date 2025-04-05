@@ -6,21 +6,55 @@
     "Jobs":[
         {
             "Enabled":true,
-            "Name":"Windows 11 Professional 22H2 for VMware + Dell XPS 7390",
+            "Name":"Windows 11 Professional 24H2 Build 000 for Dell XPS 15 9530",
+            "OSName":"Windows",
+            "Version":"11",
+            "Edition":"Pro",
+            "Feature":"24H2",
+            "Build":"000",
+            "Files":{
+                "answerPath":"C:\\Imaging\\Answer Files\\Windows-11-Pro-24H2-000-Autounattend.xml",
+                "sourceISOPath":"C:\\Imaging\\ISO\\Win11_24H2_English_x64.iso",
+                "logoPath":"C:\\Imaging\\Media\\OZO-logo.png",
+                "iconPath":"C:\\Imaging\\Media\\OZO-icon.png",
+                "wallpaperPath":"C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png"
+            },
+            "Drivers":[
+                "C:\\Imaging\\Drivers\\Dell-XPS-15-9530"
+            ],
+            "removeAppxProvisionedPackages":[
+                "Microsoft.BingNews",
+                "Microsoft.BingWeather",
+                "Microsoft.Weather",
+                "Microsoft.GetHelp",
+                "Microsoft.MicrosoftOfficeHub",
+                "Microsoft.MicrosoftSolitaireCollection",
+                "Microsoft.MicrosoftStickyNotes",
+                "Microsoft.WindowsFeedbackHub",
+                "Microsoft.XboxGamingOverlay",
+                "Microsoft.XboxIdentityProvider",
+                "Microsoft.XboxSpeechToTextOverlay",
+                "Microsoft.Xbox.TCUI",
+                "Microsoft.ZuneMusic"
+            ]
+        },
+        {
+            "Enabled":false,
+            "Name":"Windows 11 Professional 22H2 Build 000 for VMware 17 and Dell XPS 7390",
             "OSName":"Windows",
             "Version":"11",
             "Edition":"Pro",
             "Feature":"22H2",
             "Build":"000",
             "Files":{
-                "answerPath":"C:\\Imaging\\Answer Files\\22H2\\Windows-11-Pro-22H2-Autounattend.xml",
+                "answerPath":"C:\\Imaging\\Answer Files\\Windows-11-Pro-22H2-000-Autounattend.xml",
                 "sourceISOPath":"C:\\Imaging\\ISO\\Win11_22H2_English_x64v1.iso",
-                "logoPath":"C:\\Imaging\\Media\\OZO-logo.jpg",
+                "logoPath":"C:\\Imaging\\Media\\OZO-logo.png",
                 "iconPath":"C:\\Imaging\\Media\\OZO-icon.png",
                 "wallpaperPath":"C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png"
             },
             "Drivers":[
-                "C:\\Imaging\\Drivers\\VMware-17-VM",
+                "C:\\Imaging\\Drivers\\VMware-17",
                 "C:\\Imaging\\Drivers\\Dell-XPS-7390"
             ],
             "removeAppxProvisionedPackages":[

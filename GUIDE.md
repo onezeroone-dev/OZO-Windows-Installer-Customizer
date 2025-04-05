@@ -4,10 +4,10 @@ Customizes the Windows installer ISO based on a JSON configuration file containi
 
 _Note: For guidance on installing this script, please see [**README.md**](README.md)._
 
-This script reads a JSON configuration file containing one or more _Jobs_. Each job is a combination of OS, version, edition, and feature (e.g., Windows 11 Professional 22H2) and a user-defined _build_ number that differentiates builds of the same os-version-edition-feature, e.g.,
+This script reads a JSON configuration file containing one or more _Jobs_. Each job is a combination of OS, version, edition, and feature (e.g., Windows 11 Pro 24H2) and a user-defined _build_ number that differentiates builds of the same os-version-edition-feature, e.g.,
 
-- Build `000` is Windows 11 Professional 22H2 _with drivers for VMware Workstation Pro 17 virtual machines_.
-- Build `001` is Windows 11 Professional 22H2 _with drivers for the Dell XPS 7390_.
+- Build `000` is Windows 11 Pro 24H2 _with drivers for VMware Workstation Pro 17 virtual machines_.
+- Build `001` is Windows 11 Pro 24H2 _with drivers for the Dell XPS 7390_.
 
 For each new Windows release (e.g., Windows 11 Pro 22H2, Windows 11 Pro 24H2, etc.), you must prepare a *catalog*, *answer file*, a list of AppX packages to remove, and [optional\] logo, icon, and wallpaper image files. Once generated, these resources can be used for any number of automated builds of the same os-version-edition-feature.
 
@@ -30,6 +30,7 @@ These recommended directories are referenced throughout this guide. You may subs
 |`C:\Imaging\Drivers`|Third-party drivers.|
 |`C:\Imaging\ISO`|Source and target ISOs. Due to a limitation with `oscdimg.exe`, this path may not contain spaces.|
 |`C:\Imaging\Media`|Custom media (logos, icons, and wallpapers).|
+|`C:\Imaging\Mount`|Location for temporarily mounting WIM files.|
 |`C:\Imaging\Temp`|Temporary files.|
 |`C:\Imaging\WIM`|WIMs and their associated catalog files.|
 
@@ -141,14 +142,14 @@ Jobs is a _list_. Each list item is a _dictionary_ containing the details for a 
 |Item|Required|Example Value|Description|
 |----|--------|-------------|-----------|
 |`Enabled`|Yes|`true`|Controls whether or not this job is processed when the script runs. This allows you to maintain one configuration file containing all jobs and only process the desired jobs on each run. Valid values are `true` and `false` (Note: Do not use quotes).|
-|`Name`|Yes|`Microsoft Windows 11 Pro 22H2`|A user-defined name that uniquely identifies this job.|
-|`OSName`|Yes|`Windows`|OS name (probably always Windows).|
+|`Name`|Yes|`Microsoft Windows 11 Pro 24H2 Build 000 for VMware 17 and Dell XPS 15 9530`|A user-defined name that uniquely identifies this job.|
+|`OSName`|Yes|`Windows`|OS name. Valied values are `Windows` and `Windows Server`.|
 |`Version`|Yes|`11`|Major OS version. Valid values are `10`, `11`, ...`12`?|
 |`Edition`|Yes|`Pro`|OS edition as enumerated by *Dism*. Valid values are Home, Home N, Home Single Language, Education, Education N, Pro, Pro N, Pro Education, Pro Education N, Pro for Workstations, Pro N for Workstations.*|
-|`Feature`|Yes|`22H2`|Feature.|
+|`Feature`|Yes|`24H2`|Feature.|
 |`Build`|Yes|`000`|An user-defined build number that differentiates builds of the same OS, version, edition, and feature. Builds might differ by included media or drivers.|
 |`Files`|Yes|See `Jobs.Files` (below)|This definition is a dictionary containing the paths to job files.|
-|`Drivers`|No|`["C:\\Imaging\\Drivers\\VMware-17-VM","C:\\Imaging\\Drivers\\Dell-XPS-7390"]`|A list of directories containing drivers that should be included in this build.|
+|`Drivers`|No|`["C:\\Imaging\\Drivers\\VMware-17","C:\\Imaging\\Drivers\\Dell-XPS-15-9530"]`|A list of directories containing drivers that should be included in this build.|
 |`removeAppxProvisionedPackages`|No|`["Microsoft.BingNews","Microsoft.BingWeather"]`|A list of AppxProvisioned packages that should be removed from the ISO.|
 
 \* The downloadable *Microsoft Windows 11 multi-edition ISO for x64 devices* does not include the *Enterprise* or *Enterprise N* editions, however, these are also valid values if you have obtained an Enterprise ISO from Microsoft VLC.
