@@ -9,7 +9,7 @@ This script reads a JSON configuration file containing one or more _Jobs_. Each 
 - Build `000` is Windows 11 Professional 22H2 with drivers for VMware Workstation Pro 17 virtual machines.
 - Build `001` is Windows 11 Professional 22H2 with drivers for the Dell XPS 7390.
 
-For each new Windows release (e.g., Windows 11 Pro 22H2, Windows 11 Pro 24H2, etc.), the administrator must manually generate a *catalog*, *answer file*, and list of AppX packages to remove. Once generated, these resources can be used for any number of automated builds.
+For each new Windows release (e.g., Windows 11 Pro 22H2, Windows 11 Pro 24H2, etc.), the operator must manually generate a *catalog*, *answer file*, and list of AppX packages to remove. Once generated, these resources can be used for any number of automated builds.
 
 ## Table of Contents
 
@@ -26,11 +26,10 @@ These directories and files are referenced throughout this guide. You may substi
 |Directory|Description|
 |---------|-----------|
 |`C:\Imaging\Answer Files`|Answer files.|
-|`C:\Imaging\Cofniguration`|JSON configuration file(s).|
+|`C:\Imaging\Configuration`|JSON configuration file(s).|
 |`C:\Imaging\Drivers`|Third-party drivers.|
 |`C:\Imaging\ISO`|Source and target ISOs.|
 |`C:\Imaging\Media`|Custom media (logos, icons, and wallpapers).|
-|`C:\Imaging\Mount`|Mount point for WIM files.|
 |`C:\Imaging\Temp`|Temporary files.|
 |`C:\Imaging\WIM`|WIMs and their associated catalog files.|
 
@@ -54,7 +53,7 @@ For each new combination of OS, version, edition, and feature (e.g., Windows 11 
 
 #### Answer File
 
-* In `C:\Imaging\ISO`, double-click to mount the ISO downloaded from Microsoft to the `D` drive. 
+* In `C:\Imaging\ISO`, double-click to mount the Windows 11 22H2 ISO downloaded from Microsoft to the `D` drive. 
 * Copy `D:\sources\install.wim` to `C:\Imaging\WIM\22H2\`.
 * Right-click and _Eject_ the ISO.
 * Open _Windows SIM_ as _Administrator_
@@ -98,7 +97,7 @@ For each new combination of OS, version, edition, and feature (e.g., Windows 11 
     ```
 
 ## Configure Jobs
-Save [`example-configuration.json`](example-configuration.json) as `C:\Imaging\Configuration\ozo-windows-installer-customizer.json` as a starting point. It contains a dictionary with three definitions: `Paths`, `Models`, and `Jobs`:
+Save [`example-configuration.json`](example-configuration.json) as `C:\Imaging\Configuration\ozo-windows-installer-customizer.json` as a starting point. It contains a dictionary with two definitions: `Paths` and `Jobs`:
 
 ```json
 {
@@ -106,12 +105,6 @@ Save [`example-configuration.json`](example-configuration.json) as `C:\Imaging\C
         "TempDir":"",
         "OscdimgPath":""
     },
-    "Models":[
-        {
-            "Name":"",
-            "DriversDirectory":""
-        }
-    ],
     "Jobs":[
         {
             "Enabled":,
@@ -128,7 +121,7 @@ Save [`example-configuration.json`](example-configuration.json) as `C:\Imaging\C
                 "iconPath":"",
                 "wallpaperPath":""
             },
-            "Models":[],
+            "Drivers":[],
             "removeAppxProvisionedPackages":[]
         }
     ]
@@ -145,14 +138,6 @@ Paths is a _dictionary_ containing definitions for `TempDir` and `OscdImgPath`. 
 |`TempDir`|`C:\\Imaging\\Temp`|Temporary location for processing jobs.|
 |`OscdimgPath`|`C:\\Program Files (x86)\\Windows Kits\\10\\Assessment and Deployment Kit\\Deployment Tools\\amd64\\Oscdimg\\oscdimg.exe`|Path to `oscdimg.exe`.|
 
-### Models
-Models is a _list_. Each list item is a _dictionary_ containing a _Name_ and _DriversDirectory_ for a given driver pack.
-
-|Item|Example Value|Description|
-|----|-------------|-----------|
-|`Name`|`Dell-XPS-7390`|A user-defined name for this driver pack. This can be any string. This _Name_ may be referenced in any number of _Jobs_.|
-|`DriversPath`|`C:\\Imaging\\Drivers\\Dell-XPS-7390`|The path to the expanded driver pack for this _Name_.|
-
 ### Jobs
 Jobs is a _list_. Each list item is a _dictionary_ containing the details for a given job. The configuration file must contain at least one job, and may contain as many jobs as desired.
 
@@ -166,7 +151,7 @@ Jobs is a _list_. Each list item is a _dictionary_ containing the details for a 
 |`Feature`|Yes|`22H2`|Feature.|
 |`Build`|Yes|`000`|An user-defined build number differentiates builds of the same OS, version, edition, and feature that can differ by included media or drivers.|
 |`Files`|Yes|See `Jobs.Files` (below)|This definition is a dictionary containing the paths to job files.|
-|`Models`|No|`["VMware-17-VM","Dell-XPS-7390"]`|A list of models that should be included in this build.|
+|`Drivers`|No|`["C:\\Imaging\\Drivers\\VMware-17-VM","C:\\Imaging\\Drivers\\Dell-XPS-7390"]`|A list of directories containing drivers that should be included in this build.|
 |`removeAppxProvisionedPackages`|No|`["Microsoft.BingNews","Microsoft.BingWeather"]`|A list of AppxProvisioned packages that should be removed from the ISO.|
 
 \* The downloadable *Microsoft Windows 11 multi-edition ISO for x64 devices* does not include the *Enterprise* or *Enterprise N* editions, however, these are also valid values if you have obtained an Enterprise ISO from the Microsoft VLC.

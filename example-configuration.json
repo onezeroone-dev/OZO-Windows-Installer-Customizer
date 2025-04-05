@@ -3,16 +3,6 @@
         "TempDir":"C:\\Imaging\\Temp",
         "OscdimgPath":"C:\\Program Files (x86)\\Windows Kits\\10\\Assessment and Deployment Kit\\Deployment Tools\\amd64\\Oscdimg\\oscdimg.exe"
     },
-    "Models":[
-        {
-            "Name":"VMware-17-VM",
-            "DriversDirectory":"C:\\Imaging\\Drivers\\VMware-17-VM"
-        },
-        {
-            "Name":"Dell-XPS-7390",
-            "DriversDirectory":"C:\\Imaging\\Drivers\\Dell-XPS-7390"
-        }
-    ],
     "Jobs":[
         {
             "Enabled":true,
@@ -29,9 +19,9 @@
                 "iconPath":"C:\\Imaging\\Media\\OZO-icon.png",
                 "wallpaperPath":"C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png"
             },
-            "Models":[
-                "VMware-17-VM",
-                "Dell-XPS-7390"
+            "Drivers":[
+                "C:\\Imaging\\Drivers\\VMware-17-VM",
+                "C:\\Imaging\\Drivers\\Dell-XPS-7390"
             ],
             "removeAppxProvisionedPackages":[
                 "Microsoft.BingNews",

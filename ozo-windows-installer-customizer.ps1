@@ -1,4 +1,4 @@
-#Requires -Modules Dism,ImportExcel,OZOLogger -Version 5.1 -RunAsAdministrator
+#Requires -Modules Dism,OZOLogger -Version 5.1 -RunAsAdministrator
 
 <#PSScriptInfo
     .VERSION 0.0.1
@@ -10,7 +10,7 @@
     .LICENSEURI https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer/blob/main/LICENSE
     .PROJECTURI https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer
     .ICONURI
-    .EXTERNALMODULEDEPENDENCIES Dism,ImportExcel,OZOLogger
+    .EXTERNALMODULEDEPENDENCIES Dism,OZOLogger
     .REQUIREDSCRIPTS
     .EXTERNALSCRIPTDEPENDENCIES
     .RELEASENOTES https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer/blob/main/CHANGELOG.md
@@ -26,10 +26,8 @@
     The path to the JSON configuration file. Defaults to ozo-windows-installer-customizer.json in the same directory as this script.
     .PARAMETER Nocleanup
     Do not clean up the temporary file assets. Mostly used for testing and debugging.
-    .PARAMETER OutDir
-    Output directory for the Excel report. Defaults to the current directory.
     .EXAMPLE
-    ozo-windows-installer-customizer -Configuration "C:\Scripts\ozo-windows-installer-customizer.json"
+    ozo-windows-installer-customizer -Configuration "C:\Imaging\Configuration\ozo-windows-installer-customizer.json"
     .LINK
     https://github.com/onezeroone-dev/OZO-Windows-Installer-Customizer/blob/main/README.md
     .NOTES
@@ -39,31 +37,56 @@
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [Parameter(Mandatory=$false,HelpMessage="The path to the JSON configuration file")][String]$Configuration = (Join-Path -Path $PSScriptRoot -ChildPath "ozo-windows-installer-customizer.json"),
-    [Parameter(HelpMessage="Do not clean up the temporary file assets")][Switch]$NoCleanup,
-    [Parameter(Mandatory=$false,HelpMessage="Output directory for the Excel report")][String]$OutDir = (Get-Location)
+    [Parameter(HelpMessage="Do not clean up the temporary file assets")][Switch]$NoCleanup
 )
 
 # Classes
-Class OWICConfiguration {
-    # PROPERTIES: Boolean, String, Long, PSCustomObject
+Class OWICMain {
+    # PROPERTIES: Booleans, Strings, Longs
     [Boolean] $noCleanup = $false
     [Boolean] $Validates = $true
     [Long]    $tempFree  = $null
     [String]  $jsonPath  = $null
-    [String]  $outDir    = $null
-    # PROPERTIES: PSCustomObject
-    [PSCustomObject] $Json = $null
+    # PROPERTIES: PSCustomObjects
+    [PSCustomObject] $Json      = $null
+    [PSCustomObject] $ozoLogger = (New-OZOLogger)
+    # PROPERTIES: Lists
+    [System.Collections.Generic.List[PSCustomObject]] $Jobs = @()
+    # METHODS
     # Constructor method
-    OWICConfiguration($Configuration,$NoCleanup,$OutDir) {
+    OWICMain($Configuration,$NoCleanup) {
         # Set Properties
         $this.jsonPath  = $Configuration
         $this.noCleanup = $NoCleanup
-        $this.outDir    = $OutDir
         # Call ValidateEnvironment to set Validates
-        $this.Validates = ($this.ValidateJSON() -And $this.ValidateEnvironment())
+        If (($this.ValidateConfiguration() -And $this.ValidateEnvironment()) -eq $true) {
+            # Iterate through the enabled jobs in the JSON configuration
+            ForEach($Job in ($this.Json.Jobs | Where-Object {$_.enabled -eq $true})) {
+                # Process the job object
+                # Add OscdimgPath, tempDir, and tempFree to the job object
+                Add-Member -InputObject $Job -MemberType NoteProperty -Name "OscdimgPath" -Value $this.OscdimgPath
+                Add-Member -InputObject $Job -MemberType NoteProperty -Name "tempDir" -Value $this.tempDir
+                Add-Member -InputObject $Job -MemberType NoteProperty -Name "tempFree" -Value $this.tempFree
+                # Add this job to the jobs list
+                #$this.Jobs.Add([OWICJob]::new($Job))
+                $Job
+            }
+            # Iterate through the valid jobs
+            <#
+            ForEach ($Job in ($this.Jobs | Where-Object {$_.Validated -eq $true})) {
+                # Call the CustomizeISO method
+                $Job.CustomizeISO()
+            }
+            #>
+        } Else {
+            # Configuration and environment do not validate
+            $this.Validates = $false
+        }
+        # Call the report method
+        $this.Report()
     }
     # JSON validation method
-    [Boolean] ValidateJSON() {
+    Hidden [Boolean] ValidateConfiguration() {
         # Control variable
         [Boolean] $Return = $true
         # Determine if the JSON file exists
@@ -74,24 +97,24 @@ Class OWICConfiguration {
                 # Success
             } Catch {
                 # Failure
-                $Global:owicLogger.Write("Invalid JSON.","Error")
+                $this.ozoLogger.Write("Invalid JSON.","Error")
                 $Return = $false
             }
         } Else {
             # File does not exist
-            $Global:owicLogger.Write("Configuration file does not exists or is not accessible.","Error")
+            $this.ozoLogger.Write("Configuration file does not exists or is not accessible.","Error")
             $Return = $false
         }
         # Return
         return $Return
     }
     # Paths validation method
-    [Boolean] ValidateEnvironment() {
+    Hidden [Boolean] ValidateEnvironment() {
         [Boolean] $Return = $true
         # Scrutinize TempDir; determine if the path contains spaces
         If ($this.Json.Paths.TempDir -Match " ") {
             # Found spaces
-            $Global:owicLogger.Write("Path to temporary directory cannot contain spaces. This is a limitation of the Microsoft oscdimg.exe command.","Error")
+            $this.ozoLogger.Write("Path to temporary directory cannot contain spaces. This is a limitation of the Microsoft oscdimg.exe command.","Error")
             $Return = $false
         }
         # Determine if TempDir exists
@@ -102,53 +125,55 @@ Class OWICConfiguration {
             # Determine if TempDir drive is fixed
             If ((Get-Volume -DriveLetter $tempDrive).DriveType -ne "Fixed") {
                 # Disk is not fixed
-                $Global:owicLogger.Write("Temporary directory is not on a fixed drive.","Error")
+                $this.ozoLogger.Write("Temporary directory is not on a fixed drive.","Error")
                 $Return = $false
             }
         } Else {
             # Path does not exist
-            $Global:owicLogger.Write("Temporary directory does not exist.","Error")
+            $this.ozoLogger.Write("Temporary directory does not exist.","Error")
             $Return = $false
         }
         # Determine if oscdimg.exe is missing
         If ((Test-Path -Path $this.Json.Paths.OscdimgPath) -eq $false) {
             # Not found
-            $Global:owicLogger.Write("Did not find oscdimg.exe.","Error")
+            $this.ozoLogger.Write("Did not find oscdimg.exe.","Error")
             $Return = $false
         }
         # Determine that OutDir exists
         If ((Test-Path -Path $this.outDir) -eq $false) {
             # OutDir does not exist
-            $Global:owicLogger.Write("Output directory does not exist or is not accessible.","Error")
+            $this.ozoLogger.Write("Output directory does not exist or is not accessible.","Error")
             $Return = $false
         }
         # Return
         return $Return
     }
-}
-
-Class OWICMain {
-    # PROPERTIES: List
-    [System.Collections.Generic.List[PSCustomObject]] $Jobs = @()
-    # METHODS
-    # Constructor method
-    OWICMain() {
-        # Iterate through the enabled jobs in the JSON configuration
-        ForEach($Job in ($Global:owicConfiguration.Json.Jobs | Where-Object {$_.enabled -eq $true})) {
-            # Create an object of the OWICJob class
-            $this.Jobs.Add([OWICJob]::new($Job))
-        }
-        # Iterate through the validated jobs
-        ForEach ($Job in ($this.Jobs | Where-Object {$_.Validated -eq $true})) {
-            # Call the CustomizeISO method
-            $Job.CustomizeISO()
-        }
-        # Call the report method
-        $this.Report()
-    }
     # Report class
     [Void] Report() {
-        $Global:owicLogger.Write("That's all, folks","Information")
+        # Determine if any jobs were processed
+        If ($this.Jobs.Count -gt 0) {
+            # At least one job was processed; determine if there were any successes
+            If (($this.Jobs | Where-Object {$_.Success -eq $true}).Count -gt 0) {
+                # At least one job was successful; report names
+                $this.ozoLogger.Write(("Successfully processed the following jobs:`r`n" + (($this.Jobs | Where-Object {$_.Success -eq $true}).Name -Join(`r`n))),"Information")
+                # Iterate on the success jobs
+                ForEach ($successJob in ($this.Jobs | Where-Object {$_.Success -eq $true})) {
+                    $this.ozoLogger.Write("Success","Information")
+                }
+            }
+            # Determine if there were any failures
+            If (($this.Jobs | Where-Object {$_.Success -eq $false}).Count -gt 0) {
+                # At least one job failed; report names
+                $this.ozoLogger.Write(("The following jobs failed:`r`n" + (($this.Jobs | Where-Object {$_.Success -eq $false}).Name -Join(`r`n))),"Warning")
+                # Iterate
+                ForEach ($failureJob in ($this.Jobs | Where-Object {$_.Success -eq $false})) {
+                    $this.ozoLogger.Write("Failure","Information")
+                }
+            }
+        } Else {
+            # No jobs were processed
+            $this.ozoLogger.Write("Processed zero jobs.","Warning")
+        }
     }
 }
 
@@ -160,103 +185,109 @@ Class OWICJob {
     [String]  $jobTempDir    = $null
     [String]  $mountDir      = $null
     [String]  $mountDrive    = $null
+    [String]  $OscdimgPath   = $null
     [String]  $targetISOPath = $null
     [String]  $wimDir        = $null
     # PROPERTIES: PSCUstomObject
     [PSCustomObject] $Job    = $null
     # PROPERTIES: List
-    [System.Collections.Generic.List[String]]         $Messages = @()
-    [System.Collections.Generic.List[PSCustomObject]] $Models   = @()
+    [System.Collections.Generic.List[String]] $Messages = @()
     # METHODS
     # Constructor method
     OWICJob($Job) {
         # Set properties
-        $this.Job = $Job
-        $this.jobTempDir = (Join-Path -Path $Global:owicConfiguration.tempDir -ChildPath ((New-Guid).Guid + "-ozo-windows-installer-customizer"))
+        $this.Job        = $Job
+        $this.jobTempDir = (Join-Path -Path $this.Job.tempDir -ChildPath ((New-Guid).Guid + "-ozo-windows-installer-customizer"))
         # Declare ourselves to the world
-        $Global:owicLogger.Write(("Processing job " + $this.Job.Name + "."),"Information")
+        $this.Messages.Add("Processing job.")
         # Call ValidateJob to set Validates
         If ($this.ValidateJob() -eq $true) {
             # Job validated
-            $Global:owicLogger.Write("Job validates.","Information")
+            $this.Messages.Add("Job validates.")
             $this.Validates = $true
         } Else {
             # Job did not validate
-            $Global:owicLogger.Write("Job did not validate.","Error")
+            $this.Messages.Add("Job does not validate.")
             $this.Validates = $false
             $this.Success   = $false
         }
     }
     # Validate job method
-    [Boolean] ValidateJob() {
+    Hidden [Boolean] ValidateJob() {
         # Control variable
         [Boolean] $Return = $true
         # Determine if Name is set
-        If([String]::IsNullOrEmpty($this.Job.Name) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.Name) -eq $true) {
             # Not set; error
-            $this.Messages.Add("Job configuration is missing Name")
+            $this.Messages.Add("Job configuration is missing Name.")
             $Return = $false
         }
         # Determine if OSName is set
-        If([String]::IsNullOrEmpty($this.Job.OSName) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.OSName) -eq $true) {
             # Not set; error
-            $this.Messages.Add("Job configuration is missing OSName")
+            $this.Messages.Add("Job configuration is missing OSName.")
             $Return = $false
         }
         # Determine if Version is set
-        If([String]::IsNullOrEmpty($this.Job.Version) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.Version) -eq $true) {
             # Not set; error
-            $this.Messages.Add("Job configuration is missing Version")
+            $this.Messages.Add("Job configuration is missing Version.")
             $Return = $false
         }
         # Determine if Edition is set
-        If([String]::IsNullOrEmpty($this.Job.Edition) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.Edition) -eq $true) {
             # Not set; error
-            $this.Messages.Add("Job configuration is missing Edition")
+            $this.Messages.Add("Job configuration is missing Edition.")
             $Return = $false
         }
         # Determine if Feature is set
-        If([String]::IsNullOrEmpty($this.Job.Feature) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.Feature) -eq $true) {
             # Not set; error
-            $this.Messages.Add("Job configuration is missing Feature")
+            $this.Messages.Add("Job configuration is missing Feature.")
             $Return = $false
         }
         # Determine if Build is set
-        If([String]::IsNullOrEmpty($this.Job.Build) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.Build) -eq $true) {
             # Not set; error
-            $this.Messages.Add("Job configuration is missing Build")
+            $this.Messages.Add("Job configuration is missing Build.")
             $Return = $false
         }
         # Determine if answerPath is set
-        If([String]::IsNullOrEmpty($this.Job.Files.answerPath) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.Files.answerPath) -eq $true) {
             # Not set; warn
-            $this.Messages.Add("Job configuration is missing answerPath")
+            $this.Messages.Add("Job configuration is missing answerPath.")
             $Return = $false
         } Else {
             # Set; Determine that file exists
-            If((Test-Path -Path $this.Job.Files.answerPath) -eq $true){
+            If ((Test-Path -Path $this.Job.Files.answerPath) -eq $true){
                 # File exists; try if XML is valid
                 Try {
                     [Xml](Get-Content -Path $this.Job.Files.answerPath -ErrorAction Stop) | Out-Null
                     # Success (valid XML)
                 } Catch {
                     # Failure (invalid XML)
-                    $this.Messages.Add("Answer file contains invalid XML")
+                    $this.Messages.Add("Answer file contains invalid XML.")
                     $Return = $false
                 }
             } Else {
                 # File does not exist; error
-                $this.Messages.Add("Answer file specified but file not found")
+                $this.Messages.Add("Answer file specified but file not found.")
                 $Return = $false
             }
         }
         # Determine if sourceISOPath is set
-        If([String]::IsNullOrEmpty($this.Job.Files.sourceISOPath) -eq $true) {
+        If ([String]::IsNullOrEmpty($this.Job.Files.sourceISOPath) -eq $true) {
             # Not set; error
-            $this.Messages.Add("Job configuration is missing sourceISOPath")
+            $this.Messages.Add("Job configuration is missing sourceISOPath.")
         } Else {
-            # Set; determine that file exists
-            If((Test-Path -Path $this.Job.Files.sourceISOPath) -eq $true) {
+            # Set; determine that path does not contain spaces
+            If ($this.Job.Files.sourceISOPath -Match " ") {
+                # Path contains spaces - oscdimg.exe cannot handle spaces
+                $this.Messages.Add("The sourceISOPath contains spaces. Due to a limitation with oscdimg.exe, this path cannot contain spaces.")
+                $Return = $false
+            } 
+            # Determine that file exists
+            If ((Test-Path -Path $this.Job.Files.sourceISOPath) -eq $true) {
                 # File exists; parse to set targetISOPath
                 $this.targetISOPath = (Join-Path -Path (Split-Path -Path $this.Job.Files.sourceISOPath -Parent) -ChildPath ("OZO-" + $this.Job.OSsName + "-" + $this.Job.Version + "-" + $this.Job.Edition + "-" + $this.Job.Feature + "-" + $this.Job.Build + ".iso"))
                 # Determine if target ISO already exists
@@ -265,8 +296,8 @@ Class OWICJob {
                     $this.Messages.Add("Target ISO exists; skipping.")
                     $Return = $false
                 }
-                # File exists; deetermine if the disk has enough space for this job
-                If ($Global:owicConfiguration.tempFree -lt ((Get-Item -Path $this.Job.Files.inputIsoPath).Length * 4)) {
+                # File exists; determine if the disk has enough space for this job
+                If ($this.Job.tempFree -lt ((Get-Item -Path $this.Job.Files.inputIsoPath).Length * 4)) {
                     # Disk does not have enough space
                     $this.Messages.Add("Drive does not have enough free space; requires size of ISO x 4.")
                     $Return = $false
@@ -278,50 +309,51 @@ Class OWICJob {
             }
         }
         # Determine if logoPath is set
-        If([String]::IsNullOrEmpty($this.Job.Files.logoPath)) {
+        If ([String]::IsNullOrEmpty($this.Job.Files.logoPath) -eq $false) {
             # Set; determine that file exists
             If((Test-Path -Path $this.Job.Files.logoPath) -eq $false) {
                 # File does not exist; warn
                 $this.Messages.Add("Logo path specified but file not found.")
+                $Return = $false
             }
         }
         # Determine if iconPath is set
-        If([String]::IsNullOrEmpty($this.Job.Files.iconPath)) {
+        If ([String]::IsNullOrEmpty($this.Job.Files.iconPath) -eq $false) {
             # Set; determine that file exists
             If((Test-Path -Path $this.Job.Files.iconPath) -eq $false) {
                 # File does not exist; warn
                 $this.Messages.Add("Icon path specified but file not found.")
+                $Return = $false
             }
         }
         # Determine if wallpaperPath is set
-        If([String]::IsNullOrEmpty($this.Job.Files.wallpaperPath)) {
+        If ([String]::IsNullOrEmpty($this.Job.Files.wallpaperPath) -eq $false) {
             # Set; determine that file exists
             If((Test-Path -Path $this.Job.Files.wallpaperPath) -eq $false) {
                 # File does not exist; warn
                 $this.Messages.Add("Wallpaper path specified but file not found.")
-            }
-        }        
-        # Determine that at least one model is specified
-        If($this.Job.Models.Count -gt 0) {
-            # At least one model specified; iterate through them
-            ForEach($Model in $this.Json.Models) {
-                # Create an object of the Model class
-                $this.Models.Add([OWICModel]::new($Model))
-            }
-            # Determine if any of the models failed to validate
-            If (($this.Models | Where-Object {$_.Validates -eq $false}).Count -gt 0) {
-                # At least one model failed to validate
-                $this.Messages.Add("One or more models failed to validate")
                 $Return = $false
             }
-        } Else {
-            # No models specified
-            $Global:owicLogger.Add(("No models specified."))
         }
-        # check if any AppXProvisionedPackages are specified
+        # Determine if any drivers directories are set
+        If ($this.Drivers.Count -gt 0) {
+            # At least one drivers directory is set; iterate
+            ForEach ($Driver in $this.Job.Drivers) {
+                # Determine if the path is not found
+                If ((Test-Path -Path $Driver) -eq $false) {
+                    # Path is not found
+                    $this.Messages.Add(("Missing drivers directory " + $Driver + "."))
+                    $Return = $false
+                }
+            }
+        } Else {
+            # No drivers directories are set
+            $this.Messages.Add("No drivers directories specified.")
+        }
+        # Determine if any AppXProvisionedPackages are set
         If($this.Job.removeAppxProvisionedPackages.Count -eq 0) {
-            # No AppXPackages specified
-            $this.Messages.Add(("No AppxPackages specified."))
+            # No AppXPackages set
+            $this.Messages.Add("No AppxPackages specified.")
         }
         # Return
         return $Return
@@ -341,7 +373,7 @@ Class OWICJob {
             $this.CopyMediaAssets() -And
             $this.AddDrivers() -And
             $this.RemoveAppxPackages() -and
-            $this.UnmountWIM() -And
+            $this.DismountWIM() -And
             $this.CopyAnswerFile -And
             $this.WriteISO()
         )
@@ -460,18 +492,48 @@ Class OWICJob {
     Hidden [Boolean] CopyMediaAssets() {
         # Control variable
         [Boolean] $Return = $true
-        # Make sure all three assets are defined
-        If ([String]::IsNullOrEmpty($this.Job.Files.logoPath) -eq $false -And [String]::IsNullOrEmpty($this.Job.Files.iconPath -eq $false -And [String]::IsNullOrEmpty($this.Job.Files.wallpaperPath -eq $false))) {
-            # All three assets are defined
+        # Determine if any of the three media assets are defined
+        If ([String]::IsNullOrEmpty($this.Job.Files.logoPath) -eq $false -Or [String]::IsNullOrEmpty($this.Job.Files.logoPath) -eq $false -Or [String]::IsNullOrEmpty($this.Job.Files.wallpaperPath) -eq $false) {
             Try {
                 New-Item -ItemType Directory -Path (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM") -ErrorAction Stop
-                Copy-Item -Path $this.Job.Files.logoPath -Destination (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM\logo.png") -ErrorAction Stop
-                Copy-Item -Path $this.Job.Files.iconPath -Destination (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM\icon.png") -ErrorAction Stop
-                Copy-Item -Path $this.Job.Files.wallpaperPath -Destination (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM\wallpaper.png") -ErrorAction Stop
-                #Success
+                # Success; determine if logoPath is set
+                If ([String]::IsNullOrEmpty($this.Job.Files.logoPath) -eq $false) {
+                    # logoPath is set; try to copy
+                    Try {
+                        Copy-Item -Path $this.Job.Files.logoPath -Destination (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM\logo.png") -ErrorAction Stop
+                        #Success
+                    } Catch {
+                        # Failure
+                        $this.Messages.Add("Failed to copy logoPath.")
+                        $Return = $false
+                    }
+                }
+                # Determine if iconPath is set
+                If ([String]::IsNullOrEmpty($this.Job.Files.iconPath) -eq $false) {
+                    # iconPath is set; try to copy
+                    Try {
+                        Copy-Item -Path $this.Job.Files.iconPath -Destination (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM\icon.png") -ErrorAction Stop
+                        #Success
+                    } Catch {
+                        # Failure
+                        $this.Messages.Add("Failed to copy iconPath.")
+                        $Return = $false
+                    }
+                }
+                # Determine if wallpaperPath is set
+                If ([String]::IsNullOrEmpty($this.Job.Files.wallpaperPath) -eq $false) {
+                    # wallpaperPath is set; try to copy
+                    Try {
+                        Copy-Item -Path $this.Job.Files.wallpaperPath -Destination (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM\wallpaper.png") -ErrorAction Stop
+                        #Success
+                    } Catch {
+                        # Failure
+                        $this.Messages.Add("Failed to copy wallpaper path.")
+                        $Return = $false
+                    }
+                }
             } Catch {
-                # Failure
-                $this.Messages.Add("Failed to copy media assets")
+                $this.Messages.Add("Unable to create OEM directory for media assets.")
                 $Return = $false
             }
         }
@@ -483,21 +545,15 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         # Iterate through the Models
-        ForEach ($Model in $this.Models) {
-            # Determine if the Model validated
-            If ($Model.Validates -eq $true) {
-                # Model vaildates; try to add drivers
-                Try {
-                    Add-WindowsDriver -Path $this.mountDir -Driver $Model.DriversDirectory -Recurse -ErrorAction Stop
-                    #Success
-                } Catch {
-                    # Failure
-                    $this.Messages.Add("Failed")
-                    $Return = $false
-                }
-            } Else {
-                # Model did not validate
-                $this.Messages.Add(("The " + $Model.Name + " model did not validate; skipping"))
+        ForEach ($Driver in $this.Drivers) {
+            # Try to add drivers
+            Try {
+                Add-WindowsDriver -Path $this.mountDir -Driver $Driver -Recurse -ErrorAction Stop
+                #Success
+            } Catch {
+                # Failure
+                $this.Messages.Add(("Failed to add " + $Driver + " to image."))
+                $Return = $false
             }
         }
         # Return
@@ -533,15 +589,16 @@ Class OWICJob {
         return $Return
     }
     # Unmount WIM method
-    Hidden [Boolean] UnmountWIM() {
+    Hidden [Boolean] DismountWIM() {
         # Control variable
         [Boolean] $Return = $true
+        # Try to dismount the WIM
         Try {
             Dismount-WindowsImage -Path $this.mountDir -Save -ErrorAction Stop
             #Success
         } Catch {
             # Failure
-            $this.Messages.Add("Failed to unmount WIM")
+            $this.Messages.Add("Failed to dismount the WIM.")
             $Return = $false
         }
         # Return
@@ -556,7 +613,7 @@ Class OWICJob {
             #Success
         } Catch {
             # Failure
-            $this.Messages.Add("Failed to copy Answer file")
+            $this.Messages.Add("Failed to copy Answer file.")
             $Return = $false
         }
         # Return
@@ -566,12 +623,13 @@ Class OWICJob {
     Hidden [Boolean] WriteISO() {
         # Control variable
         [Boolean] $Return = $true
+        # Try to write the ISO
         Try {
-            Start-Process -NoNewWindow -Wait -FilePath $Global:owicConfiguration.OscdimgPath -ArgumentList ('-u2 -udfver102 -t -l' + [System.IO.Path]::GetFileNameWithoutExtension($this.targetISOPath) + ' -b' + (Join-Path -Path $this.dvdDir -ChildPath "efi\microsoft\boot\efisys.bin") + ' ' + ($this.dvdDir + "\") + ' ' + $this.targetISOPath)
+            Start-Process -NoNewWindow -Wait -FilePath $this.Job.OscdimgPath -ArgumentList ('-u2 -udfver102 -t -l' + [System.IO.Path]::GetFileNameWithoutExtension($this.targetISOPath) + ' -b' + (Join-Path -Path $this.dvdDir -ChildPath "efi\microsoft\boot\efisys.bin") + ' ' + ($this.dvdDir + "\") + ' ' + $this.targetISOPath)
             #Success
         } Catch {
             # Failure
-            $this.Messages.Add("Failed to write ISO")
+            $this.Messages.Add("Failed to write ISO.")
             $Return = $false
         }
         # Return
@@ -612,72 +670,8 @@ Class OWICJob {
     }
 }
 
-Class OWICModel {
-    # PROPERTIES: Boolean, String
-    [Boolean] $Validates        = $true
-    [String]  $Name             = $null
-    [String]  $DriversDirectory = $null
-    # PROPERTIES: List
-    [System.Collections.Generic.List[String]] $Messages = @()
-    # METHODS
-    # Constructor method
-    OWICModel($Model) {
-        # Set properties
-        $this.Name = $Model
-        # Call ValidateModel to set Validates
-        $this.Validates = $this.ValidateModel()
-    }
-    # Validate model method
-    [Boolean] ValidateModel() {
-        # Control variable
-        [Boolean] $Return = $true
-        # Determine if Model appears in JSON Models
-        If ($Global:owicConfiguration.Models -Contains $this.Model) {
-            # Determine that this Model appears only once in the JSON Models definition
-            If (($Global:owicConfiguration.Models | Where-Object {$_.Name -eq $this.Name}).Count -eq 1) {
-                # Model appears only once in the JSON Models; determine that DriversDirectory is not null
-                If ([String]::IsNullOrEmpty(($Global:owicConfiguration.Models | Where-Object {$_.Name -eq $this.Name}).DriversDirectory) -eq $false) {
-                    # DriversDirectory is not null or empty; populate DriversDirectory
-                    $this.DriversDirectory = ($Global:owicConfiguration.Models | Where-Object {$_.Name -eq $this.Name}).DriversDirectory
-                    # Determine that DriversDirectory exists
-                    If((Test-Path -Path $this.DriversDirectory) -eq $false) {
-                        # DriversDirectory does not exist
-                        $this.Messages.Add("DriversDirectory is specified but does not exist")
-                        $Return = $false
-                    }
-                } Else {
-                    # DriversDirectory is null or empty; error
-                    $this.Messages.Add("Configuration is missing DriversDirectory for this model")
-                    $Return = $false
-                }
-            } Else {
-                # Model appears more than once in JSON Models
-                $this.Messages.Add("Model appears more than once in the JSON configuration file; skipping")
-                $Return = $false
-            }
-        } Else {
-            # Model does not appear in JSON models
-            $this.Messages.Add("Configuration does not have a definition for this model")
-            $Return = $false
-        }
-        # Return
-        return $Return
-    }
-}
-
 # MAIN
-# Create a logging object
-$Global:owicLogger = New-OZOLogger
-# Create an object of the OWICConfiguration class
-$Global:owicConfiguration = [OWICConfiguration]::new($Configuration,$NoCleanup,$OutDir)
-# Determine if the configuration validates
-If ($Global:owicConfiguration.Validates -eq $true) {
-    $Global:owicLogger.Write("Configuration validates.","Information")
-    # configuration validates; create an object of the OWICMain class
-    [OWICMain]::new() | Out-Null
-} Else {
-    $Global:owicLogger.Write("Configuration did not validate.","Error")
-}
+[OWICMain]::new($Configuration,$NoCleanup) | Out-Null
 
 <#
 TODO:
