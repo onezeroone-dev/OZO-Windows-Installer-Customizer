@@ -82,15 +82,14 @@ Class OWICMain {
         # Call ValidateEnvironment to set Validates
         If (($this.ValidateConfiguration() -And $this.ValidateEnvironment()) -eq $true) {
             # Iterate through the enabled jobs in the JSON configuration
-            ForEach($jobJson in ($this.Json.Jobs | Where-Object {$_.enabled -eq $true})) {
-                # Process the job object
+            ForEach($jobJson in ($this.Json.Jobs | Where-Object {$_.Enabled -eq $true})) {
                 # Add OscdimgPath, tempDir, and tempFree to the job object
                 Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "OscdimgPath" -Value $this.Json.Paths.OscdimgPath
                 Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "tempDir" -Value $this.Json.Paths.tempDir
                 Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "noCleanup" -Value $NoCleanup
                 Add-Member -InputObject $jobJson -MemberType NoteProperty -Name "tempFree" -Value $this.tempFree
                 # Add this job to the jobs list
-                $this.Jobs.Add([OWICJob]::new($jobJson))
+                $this.Jobs.Add(([OWICJob]::new($jobJson)))
             }
             # Iterate through the valid jobs
             ForEach ($Job in ($this.Jobs | Where-Object {$_.Validates -eq $true})) {
@@ -210,14 +209,14 @@ Class OWICJob {
     [Boolean] $Validates     = $true
     [Boolean] $Success       = $true
     [String]  $dvdDir        = $null
-    [String]  $iconPath      = $null
+    [String]  $iconFile      = $null
     [String]  $jobTempDir    = $null
-    [String]  $logoPath      = $null
+    [String]  $logoFile      = $null
     [String]  $mountDir      = $null
     [String]  $mountDrive    = $null
     [String]  $OscdimgPath   = $null
     [String]  $targetISOPath = $null
-    [String]  $wallpaperPath = $null
+    [String]  $wallpaperFile = $null
     [String]  $wimDir        = $null
     # PROPERTIES: PSCUstomObject
     [PSCustomObject] $Json   = $null
@@ -295,13 +294,13 @@ Class OWICJob {
             If ((Test-Path -Path $this.Json.Files.answerPath) -eq $true){
                 # File exists; try if XML is valid
                 Try {
-                    $answerXml = [Xml](Get-Content -Path $this.Json.Files.answerPath -ErrorAction Stop) | Out-Null
+                    $answerXml = [Xml](Get-Content -Path $this.Json.Files.answerPath -ErrorAction Stop)
                     # Success (valid XML); set logoPath
-                    $this.logoPath = (($answerXml.unattend.settings | Where-Object {$_.pass -eq "specialize"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).OEMInformation.Logo
+                    $this.logoFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "specialize"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).OEMInformation.Logo -Leaf)
                     # Determine if an icon is specified
-                    $this.iconPath = (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.BrandIcon
+                    $this.iconFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.BrandIcon -Leaf)
                     # Determine if a wallpaper is specified
-                    $this.wallpaperPath = (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.DesktopBackground
+                    $this.wallpaperFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.DesktopBackground -Leaf)
                 } Catch {
                     # Failure (invalid XML)
                     $this.Messages.Add("Answer file contains invalid XML.")
@@ -410,7 +409,7 @@ Class OWICJob {
             $this.AddDrivers() -And
             $this.RemoveAppxPackages() -and
             $this.DismountWIM() -And
-            $this.CopyAnswerFile -And
+            $this.CopyAnswerFile() -And
             $this.WriteISO()
         )
         # Call Cleanup to clean up temporary file assets
@@ -528,18 +527,18 @@ Class OWICJob {
     Hidden [Boolean] CopyMediaAssets() {
         # Control variable
         [Boolean] $Return = $true
-        # Determine if any of the three media assets were defined in the XML
-        If (([String]::IsNullOrEmpty($this.logoPath) -eq $false) -Or ([String]::IsNullOrEmpty($this.iconPath) -eq $false) -Or ([String]::IsNullOrEmpty($this.wallpaperPath) -eq $false)) {
-            # At least one of logoPath, iconPath, or wallpaperPath were found in the XML; try to create the OEM directory
+        # Determine if any of the media files are set
+        If ([String]::IsNullOrEmpty($this.logoFile) -eq $false -Or [String]::IsNullOrEmpty($this.iconFile) -eq $false -Or [String]::IsNullOrEmpty($this.wallpaperFile) -eq $false) {
+        # Try to create the OEM directory
             Try {
                 New-Item -ItemType Directory -Path (Join-Path -Path $this.mountDir -ChildPath "Windows\System32\OEM") -ErrorAction Stop
                 # Success; determine if logoPath was set in the XML
-                If ([String]::IsNullOrEmpty($this.logoPath) -eq $false) {
+                If ([String]::IsNullOrEmpty($this.logoFile) -eq $false) {
                     # logoPath was set in the XML; determine if the logoPath is set in the job configuration and the file exists
                     If ([String]::IsNullOrEmpty($this.Json.Files.logoPath) -eq $false -And (Test-Path -Path $this.Json.Files.logoPath) -eq $true) {
                         # logoPath is set in the job configuration and the file exists; try to copy
                         Try {
-                            Copy-Item -Path $this.Json.Files.logoPath -Destination (Join-Path -Path $this.mountDir -ChildPath (Join-Path -Path "Windows\System32\OEM" -ChildPath $this.logoPath)) -ErrorAction Stop
+                            Copy-Item -Path $this.Json.Files.logoPath -Destination (Join-Path -Path $this.mountDir -ChildPath (Join-Path -Path "Windows\System32\OEM" -ChildPath $this.logoFile)) -ErrorAction Stop
                             #Success
                         } Catch {
                             # Failure
@@ -554,12 +553,12 @@ Class OWICJob {
                     $this.Messages.Add("No logo path found in the Autounattend XML.")
                 }
                 # Determine if iconPath is set
-                If ([String]::IsNullOrEmpty($this.iconPath) -eq $false) {
+                If ([String]::IsNullOrEmpty($this.iconFile) -eq $false) {
                     # iconPath was set in the XML; determine if the iconPath is set in the job configuration and the file exists
                     If ([String]::IsNullOrEmpty($this.Json.Files.iconPath) -eq $false -And (Test-Path -Path $this.Json.Files.iconPath) -eq $true) {
                         # logoPath is set in the job configuration and the file exists; try to copy
                         Try {
-                            Copy-Item -Path $this.Json.Files.iconPath -Destination (Join-Path -Path $this.mountDir -ChildPath (Join-Path -Path "Windows\System32\OEM" -ChildPath $this.iconPath)) -ErrorAction Stop
+                            Copy-Item -Path $this.Json.Files.iconPath -Destination (Join-Path -Path $this.mountDir -ChildPath (Join-Path -Path "Windows\System32\OEM" -ChildPath $this.iconFile)) -ErrorAction Stop
                             #Success
                         } Catch {
                             # Failure
@@ -574,12 +573,12 @@ Class OWICJob {
                     $this.Messages.Add("No icon path found in the Autounattend XML.")
                 }
                 # Determine if wallpaperPath is set
-                If ([String]::IsNullOrEmpty($this.wallpaperPath) -eq $false) {
+                If ([String]::IsNullOrEmpty($this.wallpaperFile) -eq $false) {
                     # wallpaperPath was set in the XML; determine if the wallpaperPath is set in the job configuration and the file exists
                     If ([String]::IsNullOrEmpty($this.Json.Files.wallpaperPath) -eq $false -And (Test-Path -Path $this.Json.Files.wallpaperPath) -eq $true) {
                         # logoPath is set in the job configuration and the file exists; try to copy
                         Try {
-                            Copy-Item -Path $this.Json.Files.wallpaperPath -Destination (Join-Path -Path $this.mountDir -ChildPath (Join-Path -Path "Windows\System32\OEM" -ChildPath $this.wallpaperPath)) -ErrorAction Stop
+                            Copy-Item -Path $this.Json.Files.wallpaperPath -Destination (Join-Path -Path $this.mountDir -ChildPath (Join-Path -Path "Windows\System32\OEM" -ChildPath $this.wallpaperFile)) -ErrorAction Stop
                             #Success
                         } Catch {
                             # Failure
@@ -598,8 +597,8 @@ Class OWICJob {
                 $Return = $false
             }
         } Else {
-            # No media assets were set
-            $this.Messages.Add("No media assets were specified.")
+            # No media files are set
+            $this.Messages.Add("No media files specified.")
         }
         # Return
         return $Return
@@ -670,7 +669,7 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         Try {
-            Copy-Item -Path $this.Json.Files.answerPath -Destination (Join-Path -Path $this.dvdDir -ChildPath "Autounattend.xml") -ErrorAction Stop
+            Copy-Item -Path $this.Json.Files.answerPath -Destination ($this.dvdDir + "\Autounattend.xml") -ErrorAction Stop
             #Success
         } Catch {
             # Failure
@@ -699,7 +698,7 @@ Class OWICJob {
     # Cleanup method
     Hidden [Void] Cleanup() {
         # Determine if there are any mounted images
-        If ((Get-WindowsImage -Mounted).Count -gt 0 -And (Get-WindowsImage -Mounted) -Contains $this.mountDir) {
+        If ((Get-WindowsImage -Mounted) -Contains $this.mountDir) {
             # There are mounted images and one of them contains mountDir; try to unmount
             Try {
                 Dismount-WindowsImage -Path $this.MountDir -Discard -ErrorAction Stop
