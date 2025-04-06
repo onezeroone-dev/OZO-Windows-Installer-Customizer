@@ -1,15 +1,15 @@
 # OZO Windows Installer Customizer Usage Guide
 ## Overview
-Customizes the Windows installer ISO based on a JSON configuration file containing parameters for OS, version, edition, and feature. It enables automation with an Answer File, can include custom media (wallpapers, logos, etc.), and can remove undesired AppX packages.
+Customizes the Windows installer ISO. It enables automation with an Answer File, can include custom media (wallpapers, logos, etc.), and can remove undesired AppX packages.
 
 _Note: For guidance on installing this script, please see [**README.md**](README.md)._
 
-This script reads a JSON configuration file containing one or more _Jobs_. Each job is a combination of OS, version, edition, and feature (e.g., Windows 11 Pro 24H2) and a user-defined _build_ number that differentiates builds of the same os-version-edition-feature, e.g.,
+This script reads a JSON configuration file containing one or more _Jobs_. Each job is a combination of OS, version, edition, and feature (e.g., Windows 11 Pro 24H2) and a user-defined _build_ number that differentiates builds of the same combination, e.g.,
 
-- Build `000` is Windows 11 Pro 24H2 _with drivers for VMware Workstation Pro 17 virtual machines_.
-- Build `001` is Windows 11 Pro 24H2 _with drivers for the Dell XPS 7390_.
+* Windows 11 Pro 24H2 _with drivers for the Dell XPS 15 9530_ is build `000`.
+* Windows 11 Pro 24H2 _with drivers for VMWare 17 virtual machines_ is build `001`.
 
-For each new Windows release (e.g., Windows 11 Pro 22H2, Windows 11 Pro 24H2, etc.), you must prepare a *catalog*, *answer file*, a list of AppX packages to remove, and [optional\] logo, icon, and wallpaper image files. Once generated, these resources can be used for any number of automated builds of the same os-version-edition-feature.
+For each new Windows combination (e.g., Windows 11 Pro 22H2, Windows 11 Home 24H2, etc.), you must prepare a _catalog_, an _answer file_, a list of AppX packages to remove, and [optionally\] a set of logo, icon, and wallpaper image files. Once generated, these resources can be used for any number of builds of the same combination.
 
 ## Table of Contents
 
@@ -47,29 +47,29 @@ ForEach ($Item in @("Answer Files","Drivers","ISO","Media","Mount","Temp","WIM")
     * [Dell Driver Packs](https://www.dell.com/support/kbdoc/en-us/000124139/dell-command-deploy-driver-packs-for-enterprise-client-os-deployment)
     * [Lenovo Drivers](https://support.lenovo.com/us/en/)
     * [VMWare Drivers](https://kb.vmware.com/s/article/2032184)
-* Extract the drivers to unique folders under `C:\Imaging\Drivers\` e.g., extract the Dell XPS 7390 driver pack to `C:\Imaging\Drivers\Dell-XPS-7390` and the VMware VM drivers to `C:\Imaging\Drivers\VMware-17-VM\`.
+* Extract the drivers to unique folders under `C:\Imaging\Drivers\` e.g., extract the Dell XPS 9530 driver pack to `C:\Imaging\Drivers\Dell-XPS-15-9530` and the VMware 17 drivers to `C:\Imaging\Drivers\VMware-17`.
 
 ### Create a Catalog and Answer File; and Enumerate AppxPackages
-For each new combination of OS, version, edition, and feature (e.g., Windows 11 Pro 22H2) you must manually generate an _Answer File_ and enumerate the included _AppxPackages_. Once generated, these resources can be re-used for any number of _builds_ of the same os-version-edition-feature.
+For each new combination (e.g., Windows 11 Pro 24H2) you must manually generate an _Answer File_ and enumerate the included _AppxPackages_. Once generated, these resources can be re-used for any number of _builds_ of the same combination.
 
 #### Catalog and Answer File
 
-* In `C:\Imaging\ISO`, double-click to mount the Windows 11 22H2 ISO downloaded from Microsoft to the `D` drive. 
-* Copy `D:\sources\install.wim` to `C:\Imaging\WIM\22H2\`.
-* Right-click and _Eject_ the ISO.
-* Open _Windows SIM_ as _Administrator_
-* `File > Select Windows Image > C:\Imaging\WIM\22H2\install.wim`.
+* Double-click the Windows 11 24H2 multi-edition ISO in `C:\Imaging\ISO` to mount it to the `D` drive. 
+* Copy `D:\sources\install.wim` to `C:\Imaging\WIM\24H2\`.
+* Right-click the `D` drive and _Eject_ the ISO.
+* _Start > Windows Kits_ and open _Windows System Image Manager_ as _Administrator_.
+* _File > Select Windows Image > `C:\Imaging\WIM\24H2\install.wim`_.
 * Choose your edition e.g., _Windows 11 Pro_.
-* Click Yes to create a catalog.
-* `File > New Answer File` and save it as `C:\Imaging\Answer Files\Windows-11-Pro-22H2-Autounattend.xml`
-* Populate your answer file as desired. This is a complicated topic that is not encapsulated in these steps. For guidance, see [this One Zero One example](https://onezeroone.dev/common-elements-for-windows-answer-files) and [Microsoft's instructions](https://docs.microsoft.com/en-us/windows-hardware/manufacture/desktop/update-windows-settings-and-scripts-create-your-own-answer-file-sxs?view=windows-11).
-* Save and close the answer file, windows image, and Windows SIM.
+* Click _Yes_ to create a catalog.
+* _File > New Answer File_ and save it as `C:\Imaging\Answer Files\Windows-11-Pro-24H2-000-Autounattend.xml`.
+* Populate your answer file according to your needs. This is a complicated topic that is not articulated here. For guidance, see [this One Zero One example](https://onezeroone.dev/common-elements-for-windows-answer-files) and [Microsoft's instructions](https://docs.microsoft.com/en-us/windows-hardware/manufacture/desktop/update-windows-settings-and-scripts-create-your-own-answer-file-sxs?view=windows-11).
+* Save and close the answer file, windows image, and Windows System Image Manager.
 
 #### AppX Packages
 
 * Open an _Administrator_ PowerShell and use `Get-WindowsImage` to obtain the _Index_ number of your desired edition:
     ```powershell
-    Get-WindowsImage -ImagePath "C:\Imaging\WIM\22H2\install.wim"
+    Get-WindowsImage -ImagePath "C:\Imaging\WIM\24H2\install.wim"
 
     <snip>
 
@@ -82,9 +82,9 @@ For each new combination of OS, version, edition, and feature (e.g., Windows 11 
     ```
 * Use this *Index* number to mount the desired image:
     ```powershell
-    Mount-WindowsImage -Path "C:\Imaging\Mount" -ImagePath "C:\Imaging\WIM\22H2\install.wim" -Index 6
+    Mount-WindowsImage -Path "C:\Imaging\Mount" -ImagePath "C:\Imaging\WIM\24H2\install.wim" -Index 6
     ```
-* Enumerate the AppX Packages and make a note of any packages you would like to remove from the image (these will be listed in the JSON configuration file later):
+* Enumerate the AppX Packages and make a note of any packages you would like to remove from the image. These will be listed in the JSON configuration file in _Configure Jobs_ (below):
 
     ```powershell
     (Get-AppxProvisionedPackage -Path "C:\Imaging\Mount").DisplayName
@@ -95,7 +95,7 @@ For each new combination of OS, version, edition, and feature (e.g., Windows 11 
     ```
 
 ## Configure Jobs
-Save [`example-configuration.json`](example-configuration.json) as `C:\Imaging\Configuration\ozo-windows-installer-customizer.json` as a starting point. It contains a dictionary with two definitions: `Paths` and `Jobs`:
+Save [`example-configuration.json`](example-configuration.json) as `C:\Imaging\Configuration\ozo-windows-installer-customizer.json` as a starting point. It contains a dictionary with two definitions: `Paths` and `Jobs`. The schema is as follows:
 
 ```json
 {
@@ -141,26 +141,26 @@ Jobs is a _list_. Each list item is a _dictionary_ containing the details for a 
 
 |Item|Required|Example Value|Description|
 |----|--------|-------------|-----------|
-|`Enabled`|Yes|`true`|Controls whether or not this job is processed when the script runs. This allows you to maintain one configuration file containing all jobs and only process the desired jobs on each run. Valid values are `true` and `false` (Note: Do not use quotes).|
-|`Name`|Yes|`Microsoft Windows 11 Pro 24H2 Build 000 for VMware 17 and Dell XPS 15 9530`|A user-defined name that uniquely identifies this job.|
-|`OSName`|Yes|`Windows`|OS name. Valied values are `Windows` and `Windows Server`.|
-|`Version`|Yes|`11`|Major OS version. Valid values are `10`, `11`, ...`12`?|
-|`Edition`|Yes|`Pro`|OS edition as enumerated by *Dism*. Valid values are Home, Home N, Home Single Language, Education, Education N, Pro, Pro N, Pro Education, Pro Education N, Pro for Workstations, Pro N for Workstations.*|
+|`Enabled`|Yes|`true`|Controls whether or not this job is processed when the script runs. This allows you to maintain one configuration file containing all jobs and only process the desired jobs on each run. Allowed values are `true` and `false` (Note: Do not use quotes).|
+|`Name`|Yes|`Microsoft Windows 11 Pro 24H2 Build 000 for the Dell XPS 15 9530`|A user-defined name that uniquely identifies this job.|
+|`OSName`|Yes|`Windows`|OS name. Values will generally be `Windows` or `Windows Server`.|
+|`Version`|Yes|`11`|Major OS version. Allowed values are `10`, `11`, ...`12`?|
+|`Edition`|Yes|`Pro`|OS edition as enumerated by *Dism* such as Home, Education, Pro, and Enterprise. *|
 |`Feature`|Yes|`24H2`|Feature.|
-|`Build`|Yes|`000`|An user-defined build number that differentiates builds of the same OS, version, edition, and feature. Builds might differ by included media or drivers.|
+|`Build`|Yes|`000`|An user-defined build number that differentiates builds of the same OS, version, edition, and feature. Builds should have a corresponding answer file and may differ by included media or drivers.|
 |`Files`|Yes|See `Jobs.Files` (below)|This definition is a dictionary containing the paths to job files.|
 |`Drivers`|No|`["C:\\Imaging\\Drivers\\VMware-17","C:\\Imaging\\Drivers\\Dell-XPS-15-9530"]`|A list of directories containing drivers that should be included in this build.|
-|`removeAppxProvisionedPackages`|No|`["Microsoft.BingNews","Microsoft.BingWeather"]`|A list of AppxProvisioned packages that should be removed from the ISO.|
+|`removeAppxProvisionedPackages`|No|`["Microsoft.BingNews","Microsoft.BingWeather"]`|A list of AppxProvisioned packages that should be removed from the build.|
 
-\* The downloadable *Microsoft Windows 11 multi-edition ISO for x64 devices* does not include the *Enterprise* or *Enterprise N* editions, however, these are also valid values if you have obtained an Enterprise ISO from Microsoft VLC.
+\* The downloadable *Microsoft Windows 11 multi-edition ISO for x64 devices* does not include the _Enterprise_ editions, however, these are also valid values if you have obtained an Enterprise ISO from Microsoft VLC. Likewise, the Windows Server editions are also valid if you are customizing a server ISO.
 
 ### Jobs.Files
-Jobs.Files is a dictionary containing paths to the answer file, source ISO, and [optional\] logo, icon, and wallpaper files.
+`Jobs.Files` is a dictionary containing paths to the answer file, source ISO, and [optional\] logo, icon, and wallpaper files.
 
 |Item|Required|Example value|Description|
 |----|--------|-------------|-----------|
-|`answerPath`|Yes|`C:\\Imaging\\Answer Files\\22H2\\Windows-11-Pro-22H2-Autounattend.xml`|The path to the answer file.|
-|`sourceIsoPath`|Yes|`C:\\Imaging\\ISO\\Win11_22H2_English_x64v1.iso`|The source ISO file.|
+|`answerPath`|Yes|`C:\\Imaging\\Answer Files\\Windows-11-Pro-24H2-000-Autounattend.xml`|The path to the answer file. This example is named for the os-version-edition-feature-build.|
+|`sourceIsoPath`|Yes|`C:\\Imaging\\ISO\\Win11_24H2_English_x64.iso`|The source ISO file.|
 |`logoFile`|No|`C:\\Imaging\\Media\\OZO-logo.jpg`|The logo file. This file will copied into the ISO as the file name specified in the Autounattend XML.|
 |`iconFile`|No|`C:\\Imaging\\Media\\OZO-icon.png`|The icon file. This file will be copied into the ISO as the file name specified in the Autounattend XML.|
 |`wallpaperFile`|No|`C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png`|The wallpaper file. This file will be copied into the ISO as the file name specified in the Autounattend XML.|

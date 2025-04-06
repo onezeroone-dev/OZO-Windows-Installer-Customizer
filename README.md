@@ -6,7 +6,7 @@ _Note: For guidance on configuration and more detail on using this script, pleas
 
 ## Prerequisites
 * PowerShell version 5.1 or newer.
-* The latest [Microsoft Assessment and Deployment Kit](https://docs.microsoft.com/en-us/windows-hardware/get-started/adk-install) ("ADK"). Select the _Deployment Tools_ option during installation. This provides the DISM PowerShell module and `oscdimg.exe`.
+* The latest [Microsoft Assessment and Deployment Kit](https://docs.microsoft.com/en-us/windows-hardware/get-started/adk-install) ("ADK"). Select the _Deployment Tools_ option during installation. This provides the Windows System Image Manager tool, the DISM PowerShell module and `oscdimg.exe`.
 * The `DISM` and `OZOLogger` PowerShell modules. The `DISM` module is provided by the ADK. The `OZOLogger` module is published to [PowerShell Gallery](https://learn.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-5.1).
 
 Optionally, you can install and run the [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) script to support the optimal user of the `OZOLogger` module. Ensure your system is configured for this repository then execute the following in an _Administrator_ PowerShell:
@@ -44,8 +44,8 @@ This script writes general status messages to the Windows Event Log. If [_OZO Wi
 Run this script as _Administrator_. For guidance on configuration and using this script, please see [**GUIDE.md**](GUIDE.md).
 
 ## Acknowledgements
-Special thanks to my employer, [Sonic Healthcare USA](https://sonichealthcareusa.com), who has supported the growth of my PowerShell skillset and enabled me to contribute portions of my work product to the PowerShell community.
+Special thanks to my employer, [Sonic Healthcare USA](https://sonichealthcareusa.com), who supports the growth of my PowerShell skillset and enables me to contribute portions of my work product to the PowerShell community.
 
 The [custom wallpaper image](https://www.pexels.com/photo/abstract-wallpaper-13884938) included in this repository is by Marcin Jozwiak and was obtained from [Pexels](https://www.pexels.com) where it is licensed for use under the [Pexels License](https://www.pexels.com/license).
 
-The One Zero One logo and icon use the highly accessible and inclusive [Atkinson Hyperlegible](https://en.wikipedia.org/wiki/Atkinson_Hyperlegible) font which can be downloaded from [The Braille Institute](https://brailleinstitute.org/freefont) and whose importance is brilliantly articulated in <a href="">[this YouTube video](https://www.youtube.com/watch?v=wjE5eHLICzc) by Linus Bowman.
+The One Zero One logo and icon use the highly accessible and inclusive [Atkinson Hyperlegible](https://en.wikipedia.org/wiki/Atkinson_Hyperlegible) font which can be downloaded from [The Braille Institute](https://brailleinstitute.org/freefont) and whose importance is brilliantly articulated in [this YouTube video](https://www.youtube.com/watch?v=wjE5eHLICzc) by Linus Bowman.

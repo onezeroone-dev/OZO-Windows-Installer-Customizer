@@ -54,8 +54,7 @@
                 "wallpaperPath":"C:\\Imaging\\Media\\OZO-wallpaper-1900x1200.png"
             },
             "Drivers":[
-                "C:\\Imaging\\Drivers\\VMware-17",
-                "C:\\Imaging\\Drivers\\Dell-XPS-7390"
+                "C:\\Imaging\\Drivers\\Dell-XPS-13-7390"
             ],
             "removeAppxProvisionedPackages":[
                 "Microsoft.BingNews",

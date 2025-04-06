@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
-    <servicing></servicing>
     <settings pass="windowsPE">
         <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <SetupUILanguage>
+                <UILanguage>en-US</UILanguage>
+            </SetupUILanguage>
             <InputLocale>en-US</InputLocale>
             <SystemLocale>en-US</SystemLocale>
             <UILanguage>en-US</UILanguage>
@@ -30,18 +32,18 @@
                             <Type>MSR</Type>
                         </CreatePartition>
                         <CreatePartition wcm:action="add">
-                            <Order>4</Order>
                             <Extend>true</Extend>
+                            <Order>4</Order>
                             <Type>Primary</Type>
                         </CreatePartition>
                     </CreatePartitions>
                     <ModifyPartitions>
                         <ModifyPartition wcm:action="add">
-                            <Format>NTFS</Format>
-                            <Label>WINRE</Label>
-                            <TypeID>DE94BBA4-06D1-4D40-A16A-BFD50179D6AC</TypeID>
                             <Order>1</Order>
                             <PartitionID>1</PartitionID>
+                            <Format>NTFS</Format>
+                            <TypeID>DE94BBA4-06D1-4D40-A16A-BFD50179D6AC</TypeID>
+                            <Label>WINRE</Label>
                         </ModifyPartition>
                         <ModifyPartition wcm:action="add">
                             <Order>2</Order>
@@ -50,9 +52,8 @@
                             <Label>System</Label>
                         </ModifyPartition>
                         <ModifyPartition wcm:action="add">
-                            <PartitionID>3</PartitionID>
-                            <TypeID></TypeID>
                             <Order>3</Order>
+                            <PartitionID>3</PartitionID>
                         </ModifyPartition>
                         <ModifyPartition wcm:action="add">
                             <Order>4</Order>
@@ -74,6 +75,9 @@
                     </InstallTo>
                 </OSImage>
             </ImageInstall>
+            <UserData>
+                <AcceptEula>true</AcceptEula>
+            </UserData>
         </component>
     </settings>
     <settings pass="specialize">
@@ -84,26 +88,15 @@
             <UILanguageFallback>en-US</UILanguageFallback>
             <UserLocale>en-US</UserLocale>
         </component>
-        <component name="Microsoft-Windows-MicrosoftEdgeBrowser" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <FavoriteBarItems>
-                <FavoriteBarItem wcm:action="add">
-                    <ItemName>One Zero One</ItemName>
-                    <ItemUrl>https://onezeroone.dev</ItemUrl>
-                    <ItemKey>1</ItemKey>
-                </FavoriteBarItem>
-            </FavoriteBarItems>
-        </component>
         <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <TimeZone>UTC</TimeZone>
             <OEMInformation>
                 <Logo>%windir%\system32\OEM\OZO-logo.png</Logo>
-                <Manufacturer>One Zero One</Manufacturer>
-                <Model>Dell XPS 15 9530</Model>
-                <SupportHours>24x7</SupportHours>
-                <SupportPhone>+1-555-123-4567</SupportPhone>
-                <SupportProvider>One Zero One</SupportProvider>
+                <Manufacturer>Dell</Manufacturer>
+                <Model>XPS 15 9530</Model>
                 <SupportURL>https://onezeroone.dev</SupportURL>
+                <SupportProvider>One Zero One</SupportProvider>
             </OEMInformation>
-            <OEMName>One Zero One</OEMName>
         </component>
     </settings>
     <settings pass="oobeSystem">
@@ -117,13 +110,17 @@
         <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <OOBE>
                 <HideEULAPage>true</HideEULAPage>
+                <HideLocalAccountScreen>true</HideLocalAccountScreen>
+                <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+                <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+                <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
                 <ProtectYourPC>1</ProtectYourPC>
             </OOBE>
             <Themes>
                 <BrandIcon>%windir%\system32\OEM\OZO-icon.png</BrandIcon>
                 <DesktopBackground>%windir%\system32\OEM\OZO-wallpaper-1900x1200.png</DesktopBackground>
-                <ThemeName>One Zero One</ThemeName>
                 <WindowColor>0xff730216</WindowColor>
+                <ThemeName>One Zero One</ThemeName>
             </Themes>
         </component>
     </settings>

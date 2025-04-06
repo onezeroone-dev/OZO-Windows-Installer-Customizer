@@ -1,7 +1,7 @@
 #Requires -Modules Dism,OZOLogger -Version 5.1 -RunAsAdministrator
 
 <#PSScriptInfo
-    .VERSION 0.0.1
+    .VERSION 0.1.0
     .GUID 798c9379-3b13-41c0-a2d9-04c7957dff49
     .AUTHOR Andy Lievertz <alievertz@onezeroone.dev>
     .COMPANYNAME One Zero One
@@ -247,7 +247,7 @@ Class OWICJob {
         # Control variable
         [Boolean] $Return = $true
         # Local variables
-        [Xml] $answerXML = $null
+        [Xml] $answerXml = $null
         # Determine if Name is set
         If ([String]::IsNullOrEmpty($this.Json.Name) -eq $true) {
             # Not set; error
@@ -292,15 +292,33 @@ Class OWICJob {
         } Else {
             # Set; Determine that file exists
             If ((Test-Path -Path $this.Json.Files.answerPath) -eq $true){
-                # File exists; try if XML is valid
+                # File exists; try to determine if XML is valid
                 Try {
                     $answerXml = [Xml](Get-Content -Path $this.Json.Files.answerPath -ErrorAction Stop)
-                    # Success (valid XML); set logoPath
-                    $this.logoFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "specialize"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).OEMInformation.Logo -Leaf)
-                    # Determine if an icon is specified
-                    $this.iconFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.BrandIcon -Leaf)
-                    # Determine if a wallpaper is specified
-                    $this.wallpaperFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.DesktopBackground -Leaf)
+                    # Success (valid XML); try to get the logo file name
+                    Try {
+                        $this.logoFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "specialize"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).OEMInformation.Logo -Leaf -ErrorAction Stop)
+                        # Success
+                    } Catch {
+                        # Failure
+                        $this.Messages.Add("Unable to read logo path from Autounattend XML.")
+                    }
+                    # Try to get the icon file name
+                    Try {
+                        $this.iconFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.BrandIcon -Leaf -ErrorAction Stop)
+                        # Success
+                    } Catch {
+                        # Failure
+                        $this.Messages.Add("Unable to read icon path from Autounattend XML.")
+                    }
+                    # Try to get the wallpaper file name
+                    Try {
+                        $this.wallpaperFile = (Split-Path -Path (($answerXml.unattend.settings | Where-Object {$_.pass -eq "oobeSystem"}).component | Where-Object {$_.name -eq "Microsoft-Windows-Shell-Setup"}).Themes.DesktopBackground -Leaf -ErrorAction SilentlyContinue)
+                        # Success
+                    } Catch {
+                        # Failure
+                        $this.Messages.Add("Unable to read wallpaper path from Autounattend XML.")
+                    }
                 } Catch {
                     # Failure (invalid XML)
                     $this.Messages.Add("Answer file contains invalid XML.")
