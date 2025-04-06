@@ -11,11 +11,11 @@ _Note: For guidance on configuration and more detail on using this script, pleas
 
 Optionally, you can install and run the [_OZO Window Event Log Provider Setup_](https://github.com/onezeroone-dev/OZO-Windows-Event-Log-Provider-Setup/blob/main/README.md) script to support the optimal user of the `OZOLogger` module. Ensure your system is configured for this repository then execute the following in an _Administrator_ PowerShell:
 
-    ```powershell
-    Install-Script ozo-windows-event-log-provider-setup
-    Install-Module OZOLogger
-    ozo-windows-event-log-provider-setup.ps1
-    ```
+```powershell
+Install-Script ozo-windows-event-log-provider-setup
+Install-Module OZOLogger
+ozo-windows-event-log-provider-setup.ps1
+```
 
 ## Installation
 This script is published to [PowerShell Gallery](https://learn.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-5.1). Ensure your system is configured for this repository then execute the following in an _Administrator_ PowerShell:
